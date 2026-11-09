@@ -1,0 +1,29 @@
+#connect-region { padding: 24px; }
+#connect-region .connect-panel { width: 100%; max-width: 760px; }
+#connect-region .connect-body { display: grid; gap: 14px; padding: 18px 24px 24px; }
+#connect-region .connect-lede,
+#connect-region .connect-env { margin: 0; }
+#connect-region .connect-form { display: grid; gap: 12px; }
+#connect-region .field__help { margin: 0; }
+#connect-region .field__help a { color: var(--lcd); }
+#connect-region .connect-result { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; }
+#connect-region .connect-result:has(> [hidden]:first-child + [hidden]) { display: none; }
+#connect-region .connect-status { margin: 0; color: var(--text); overflow-wrap: anywhere; }
+#connect-region .connect-status--error { color: var(--st-error); }
+#connect-region .connect-actions { display: flex; }
+#connect-region .connect-privacy { margin: 0; color: var(--muted); font-size: 0.875rem; }
+
+/* A notice, not a gate: one line above the stage while a returning user has no key. */
+.slice-shell #key-notice {
+  display: flex;
+  flex: 0 0 auto;
+  align-items: center;
+  gap: 12px;
+  padding: 4px 10px;
+  color: var(--text);
+  background: var(--panel);
+  border: 2px solid var(--amber);
+  font: 0.875rem/1.3 var(--f-body);
+}
+.slice-shell #key-notice[hidden] { display: none; }
+.slice-shell #key-notice .key-notice__text { flex: 1 1 auto; min-width: 0; }

@@ -1,0 +1,107 @@
+#moves-region .moves-popover {
+  width: 360px;
+  padding: 8px;
+  background: var(--panel-2);
+  color: var(--text);
+  border: 2px solid var(--lcd-soft);
+  box-shadow: var(--hard-shadow);
+  font-family: var(--f-body);
+  overflow-wrap: anywhere;
+  scroll-padding: 6px;
+}
+
+#moves-region #moves-title {
+  margin: 0 0 4px;
+  color: var(--lcd-soft);
+  font-family: var(--f-ui);
+  font-size: 0.875rem;
+  text-transform: uppercase;
+}
+
+#moves-region #moves-from {
+  margin: 0 0 8px;
+  font-size: 0.875rem;
+}
+
+#moves-region .moves-choices {
+  padding: 4px;
+}
+
+#moves-region .moves-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: stretch;
+  gap: 4px;
+  margin-bottom: 4px;
+}
+
+#moves-region .moves-choice,
+#moves-region .moves-further {
+  min-width: var(--tap);
+  min-height: var(--tap);
+  padding: 4px;
+  border: 1px solid var(--line);
+  background: var(--panel);
+  color: var(--text);
+  font-size: 0.875rem;
+  cursor: pointer;
+}
+
+#moves-region .moves-choice {
+  display: grid;
+  grid-template-columns: 24px minmax(0, 1fr);
+  align-items: start;
+  gap: 4px;
+  text-align: left;
+}
+
+#moves-region .moves-choice kbd {
+  color: var(--lcd-soft);
+  font-family: var(--f-mono);
+  text-align: center;
+}
+
+#moves-region .moves-estimate,
+#moves-region .moves-reason,
+#moves-region .moves-foot {
+  color: var(--muted);
+  font-size: 0.8125rem;
+}
+
+#moves-region .moves-estimate {
+  display: block;
+}
+
+#moves-region .moves-reason {
+  grid-column: 1 / -1;
+  padding: 0 4px 4px 32px;
+}
+
+#moves-region .moves-highlight .moves-choice {
+  border-color: var(--lcd-soft);
+  background: var(--panel-3);
+}
+
+#moves-region button[aria-disabled="true"] {
+  color: var(--muted);
+  cursor: default;
+}
+
+#moves-region button:active:not([aria-disabled="true"]) {
+  box-shadow: var(--bevel-in);
+}
+
+#moves-region :focus-visible {
+  outline: 3px solid var(--focus);
+  outline-offset: 1px;
+}
+
+#moves-region .moves-mode {
+  color: var(--st-warning);
+  font-size: 0.875rem;
+}
+
+#moves-region .moves-foot,
+#moves-region .moves-mode {
+  margin: 8px 4px 0;
+}

@@ -1,0 +1,24 @@
+services:
+  digger:
+    build: .
+    image: cosine-digger:local
+    ports:
+      - "127.0.0.1:8765:8765"
+    volumes:
+      - digger-data:/data
+      # - ~/Music:/music:ro
+    env_file:
+      - path: .env
+        required: false
+    environment:
+      # Keep local .env paths and bind settings from escaping the container layout.
+      COSINE_DIGGER_HOME: /data
+      COSINE_DIGGER_DB: /data/taste.db
+      COSINE_DIGGER_YTMUSIC_AUTH: /data/ytmusic_auth.json
+      COSINE_DIGGER_HOST: 0.0.0.0
+      COSINE_DIGGER_PORT: "8765"
+      # COSINE_DIGGER_MUSIC_DIR: /music
+    restart: unless-stopped
+
+volumes:
+  digger-data:

@@ -1,0 +1,104 @@
+#new-dig-region { padding: 24px; }
+#new-dig-region .seedbox-panel { width: 100%; }
+#new-dig-region .seedbox-body { max-width: 960px; padding: 18px 24px 24px; }
+#new-dig-region .seedbox-aside,
+#new-dig-region .seedbox-hint,
+#new-dig-region .seedbox-links,
+#new-dig-region .seedbox-message { color: var(--muted); font-size: 0.875rem; }
+#new-dig-region .seedbox-lede { margin: 0 0 18px; }
+#new-dig-region .seedbox-input-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 8px;
+  color: var(--lcd);
+  background: var(--lcd-bg);
+  border: 2px solid;
+  border-color: var(--bevel-in);
+}
+#new-dig-region .seedbox-chips { display: contents; }
+#new-dig-region #seed-input {
+  flex: 1 1 220px;
+  min-width: 160px;
+  min-height: var(--tap);
+  padding: 4px;
+  border: 0;
+  border-radius: 0;
+  background: var(--lcd-bg);
+  color: var(--lcd);
+  font: 1.375rem/1.2 var(--f-lcd);
+}
+#new-dig-region #seed-input::placeholder { color: var(--muted); opacity: 1; }
+#new-dig-region .seedbox-slash { margin-left: auto; color: var(--muted); }
+#new-dig-region .seedbox-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  max-width: 280px;
+  height: 36px;
+  padding-left: 8px;
+  border: 1px solid var(--line);
+  background: var(--panel-2);
+  color: var(--text);
+  font: 0.875rem/1.2 var(--f-body);
+}
+#new-dig-region .seedbox-chip-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+#new-dig-region .seedbox-chip-warning { color: var(--st-warning); }
+#new-dig-region .seedbox-chip-remove {
+  flex: 0 0 30px;
+  min-width: 30px;
+  height: 30px;
+  padding: 0;
+  border: 0;
+  color: var(--text);
+  background: transparent;
+  font: 1.25rem/1 var(--f-body);
+  cursor: pointer;
+}
+#new-dig-region .seedbox-chip-remove:hover { color: var(--white); background: var(--panel-3); }
+#new-dig-region .seedbox-hint { margin: 6px 0; }
+#new-dig-region .seedbox-start-error { margin-top: 12px; }
+#new-dig-region #seed-results { margin-top: 14px; }
+#new-dig-region .seedbox-section + .seedbox-section { margin-top: 18px; }
+#new-dig-region .seedbox-section-bar { display: flex; flex-wrap: wrap; align-items: baseline; gap: 8px; }
+#new-dig-region .seedbox-section-title { margin: 0 0 8px; color: var(--white); font: 0.875rem/1.4 var(--f-ui); }
+#new-dig-region .seedbox-pending { color: var(--st-pending); font-size: 0.875rem; }
+#new-dig-region .seedbox-result {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  min-height: var(--tap);
+  padding: 8px 12px;
+  border-left: 4px solid transparent;
+  cursor: pointer;
+}
+#new-dig-region .seedbox-result[aria-selected="true"] { background: var(--panel-3); border-left-color: var(--mark-selected); }
+#new-dig-region .seedbox-result[aria-disabled="true"] { cursor: default; color: var(--muted); }
+#new-dig-region .seedbox-result-text { display: grid; min-width: 0; }
+#new-dig-region .seedbox-result-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+#new-dig-region .seedbox-result-detail,
+#new-dig-region .seedbox-result-added { color: var(--muted); font-size: 0.8125rem; }
+#new-dig-region .seedbox-result-detail { overflow-wrap: anywhere; }
+#new-dig-region .seedbox-result-added { flex-shrink: 0; }
+#new-dig-region .seedbox-warning { color: var(--st-warning); }
+#new-dig-region .seedbox-warning::before { content: "! "; }
+#new-dig-region .seedbox-message { margin: 6px 0 12px; }
+#new-dig-region .seedbox-message a { color: inherit; display: inline-block; min-height: 24px; }
+/* A key to add or fix, a wait, or no connection: the text carries its own "!", the button says what to do. */
+#new-dig-region .seedbox-note { margin: 6px 0 12px; color: var(--st-warning); font-size: 0.875rem; }
+#new-dig-region .seedbox-note .btn { margin-left: 4px; vertical-align: middle; }
+#new-dig-region .seedbox-links { margin: 14px 0; }
+#new-dig-region .seedbox-start-row { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; }
+#new-dig-region .seedbox-recent { margin-top: 28px; }
+#new-dig-region .seedbox-recent-link {
+  display: flex;
+  flex-direction: column;
+  min-height: var(--tap);
+  padding: 8px 12px;
+  color: var(--white);
+  text-decoration: none;
+}
+#new-dig-region .seedbox-recent-link:hover { background: var(--panel-2); }
+#new-dig-region .seedbox-recent-link strong { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }

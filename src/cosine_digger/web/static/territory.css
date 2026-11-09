@@ -1,0 +1,63 @@
+#territory-region.territory {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  background: var(--panel);
+  border: 2px solid;
+  border-color: var(--bevel-in);
+}
+#territory-region .panel__bar { flex: 0 0 auto; gap: 4px; }
+#territory-region .panel__title { min-width: 0; font-size: 0.875rem; }
+#territory-region .territory-tools { display: flex; gap: 2px; margin-left: auto; }
+#territory-region .territory-tools button { min-width: var(--tap); min-height: var(--tap); padding: 2px 6px; }
+#territory-region .territory-surface { position: relative; flex: 1; min-height: 0; overflow: hidden; }
+#territory-region canvas {
+  display: block;
+  width: 100%;
+  height: 100%;
+  background: var(--panel);
+  font: 0.75rem var(--f-body);
+  touch-action: none;
+  cursor: grab;
+}
+#territory-region canvas:focus-visible { outline: 3px solid var(--focus); outline-offset: -4px; }
+#territory-region canvas.is-over-island { cursor: pointer; }
+#territory-region canvas.is-dragging { cursor: grabbing; }
+#territory-region #territory-caption {
+  position: absolute;
+  bottom: 4px;
+  left: 4px;
+  right: 4px;
+  margin: 0;
+  pointer-events: none;
+  white-space: pre-line;
+  font: 0.75rem/1.25 var(--f-body);
+  color: var(--muted);
+}
+#territory-region .territory-from {
+  position: absolute;
+  min-width: var(--tap);
+  min-height: var(--tap);
+  max-width: calc(100% - 8px);
+  padding: 0 4px;
+  border: 0;
+  color: var(--muted);
+  background: var(--panel);
+  font: 0.75rem var(--f-body);
+  cursor: pointer;
+}
+#territory-region .territory-from:hover { color: var(--text); }
+#territory-region .territory-tooltip {
+  position: absolute;
+  z-index: 1;
+  max-width: calc(100% - 8px);
+  max-height: calc(100% - 8px);
+  overflow: hidden;
+  padding: 4px 6px;
+  pointer-events: none;
+  overflow-wrap: anywhere;
+  color: var(--text);
+  background: var(--panel-2);
+  border: 1px solid var(--line);
+  font: 0.75rem/1.3 var(--f-body);
+}

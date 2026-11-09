@@ -1,0 +1,136 @@
+{
+  "data": {
+    "source_track": {
+      "id": "seed-001",
+      "name": "Falling - Theo Parrish",
+      "artist": "Theo Parrish",
+      "track": "Falling",
+      "score": null,
+      "video_id": null,
+      "video_uri": null,
+      "external_link": "https://www.discogs.com/release/12345",
+      "source": "cosine"
+    },
+    "similar_tracks": [
+      {
+        "id": "trk-001",
+        "name": "Untitled A2 - Marcellus Pittman",
+        "artist": "Marcellus Pittman",
+        "track": "Untitled A2",
+        "score": 0.92,
+        "video_id": null,
+        "video_uri": null,
+        "external_link": "https://www.discogs.com/release/22001",
+        "source": "cosine"
+      },
+      {
+        "id": "trk-002",
+        "name": "Galaxy Quest - Omar S",
+        "artist": "Omar S",
+        "track": "Galaxy Quest",
+        "score": 0.89,
+        "video_id": null,
+        "video_uri": null,
+        "external_link": "https://www.discogs.com/release/22002",
+        "source": "cosine"
+      },
+      {
+        "id": "trk-003",
+        "name": "Living Inside Drums - Ron Trent",
+        "artist": "Ron Trent",
+        "track": "Living Inside Drums",
+        "score": 0.87,
+        "video_id": null,
+        "video_uri": null,
+        "external_link": "https://www.discogs.com/release/22003",
+        "source": "cosine"
+      },
+      {
+        "id": "trk-004",
+        "name": "Sweat - Moodymann",
+        "artist": "Moodymann",
+        "track": "Sweat",
+        "score": 0.85,
+        "video_id": null,
+        "video_uri": null,
+        "external_link": "https://www.discogs.com/release/22004",
+        "source": "cosine"
+      },
+      {
+        "id": "trk-005",
+        "name": "Skyway - Kyle Hall",
+        "artist": "Kyle Hall",
+        "track": "Skyway",
+        "score": 0.83,
+        "video_id": null,
+        "video_uri": null,
+        "external_link": "https://www.discogs.com/release/22005",
+        "source": "cosine"
+      },
+      {
+        "id": "trk-006",
+        "name": "Untitled B1 - Rick Wilhite",
+        "artist": "Rick Wilhite",
+        "track": "Untitled B1",
+        "score": 0.81,
+        "video_id": null,
+        "video_uri": null,
+        "external_link": "https://www.discogs.com/release/22006",
+        "source": "cosine"
+      },
+      {
+        "id": "trk-007",
+        "name": "Strings of Life - Derrick May",
+        "artist": "Derrick May",
+        "track": "Strings of Life",
+        "score": 0.79,
+        "video_id": null,
+        "video_uri": null,
+        "external_link": null,
+        "source": "cosine"
+      },
+      {
+        "id": "trk-008",
+        "name": "Bug in the Bass Bin - Innerzone Orchestra",
+        "artist": "Innerzone Orchestra",
+        "track": "Bug in the Bass Bin",
+        "score": 0.77,
+        "video_id": null,
+        "video_uri": null,
+        "external_link": "https://www.discogs.com/release/22008",
+        "source": "cosine"
+      },
+      {
+        "id": "trk-009",
+        "name": "The Warning - Eddie Fowlkes",
+        "artist": "Eddie Fowlkes",
+        "track": "The Warning",
+        "score": 0.75,
+        "video_id": null,
+        "video_uri": null,
+        "external_link": null,
+        "source": "cosine"
+      },
+      {
+        "id": "trk-010",
+        "name": "Off to Battle - Mike Huckaby",
+        "artist": "Mike Huckaby",
+        "track": "Off to Battle",
+        "score": 0.73,
+        "video_id": null,
+        "video_uri": null,
+        "external_link": "https://www.discogs.com/release/22010",
+        "source": "cosine"
+      }
+    ]
+  },
+  "meta": {
+    "total": 10,
+    "count": 10,
+    "limit": 10,
+    "offset": 0,
+    "has_more": true,
+    "request_id": "req-abc123",
+    "timestamp": "2026-03-22T12:00:00Z"
+  }
+}

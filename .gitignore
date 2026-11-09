@@ -1,0 +1,45 @@
+.env
+client_secrets.json
+youtube_token.json
+.DS_Store
+.venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+.report-publisher.json
+*.egg-info/
+dist/
+build/
+prompts/
+api-1.json
+GOAL.md.DS_Store
+.claude/*
+!.claude/skills/
+.codex/
+/task_plan.md
+/progress.md
+/findings.md
+sample_taste.db
+sample_manifest.jsonl
+*.taste.db
+*.manifest.jsonl
+results.json
+.omx/
+
+# Personal overrides for zone profiles and other local customizations.
+# Anything ending in `.local.md` is treated as private, never committed.
+*.local.md
+
+
+# plan-files per-agent binding state
+.planning/.sessions/
+.planning/.active_plan
+
+# iOS app: local signing and Xcode state
+ios/Config/Signing.local.xcconfig
+ios/**/xcuserdata/
+ios/build/
+ios/DerivedData/
+ios/.swiftpm/
+ios/DiggerKit/.build/
+ios/DiggerKit/.swiftpm/

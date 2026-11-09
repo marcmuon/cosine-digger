@@ -1,0 +1,104 @@
+name: release
+
+# Runs only on a version tag. Every published file is the one the verify job tested:
+# the wheel and sdist built once in `build`, and scripts/start.sh from the tagged commit.
+on:
+  push:
+    tags: ["v*"]
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v6
+        with:
+          python-version: "3.12"
+      - run: uv build --no-sources
+      - uses: actions/upload-artifact@v4
+        with:
+          name: dist
+          path: dist/
+          if-no-files-found: error
+
+  verify:
+    needs: build
+    runs-on: ubuntu-latest
+    env:
+      DIGGER_NO_SKIPS: "1"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v6
+        with:
+          python-version: "3.12"
+      - uses: actions/download-artifact@v4
+        with:
+          name: dist
+          path: dist/
+      - name: Check release versions
+        env:
+          RELEASE_TAG: ${{ github.ref_name }}
+        run: |
+          version=$(uv run --no-project python -c 'import tomllib; print(tomllib.load(open("pyproject.toml", "rb"))["project"]["version"])')
+          bootstrap_version=$(sed -nE "s/^DIGGER_VERSION=['\"]?([^'\"[:space:]]+)['\"]?[[:space:]]*$/\1/p" scripts/start.sh)
+          test "$RELEASE_TAG" = "v$version"
+          test "$bootstrap_version" = "$version"
+          ls dist/cosine_digger-"$version"-py3-none-any.whl dist/cosine_digger-"$version".tar.gz
+      - run: sh -n scripts/start.sh
+      - run: uv sync --extra dev --extra browser --frozen
+      - run: uv run pytest -q -rs
+      - name: Smoke-test the wheel that gets published
+        run: SMOKE_WHEEL="$(ls dist/*.whl)" sh scripts/smoke_wheel.sh
+
+  pypi:
+    needs: [build, verify]
+    runs-on: ubuntu-latest
+    environment: pypi
+    permissions:
+      id-token: write
+      contents: read
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: dist
+          path: dist/
+      - uses: pypa/gh-action-pypi-publish@release/v1
+
+  github-release:
+    needs: [build, verify]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: dist
+          path: dist/
+      - name: Create GitHub release and upload assets
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          RELEASE_TAG: ${{ github.ref_name }}
+        run: gh release create "$RELEASE_TAG" scripts/start.sh dist/* --verify-tag --generate-notes
+
+  image:
+    needs: verify
+    runs-on: ubuntu-latest
+    permissions:
+      packages: write
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - run: sh scripts/smoke_docker.sh
+      - uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - uses: docker/build-push-action@v6
+        with:
+          push: true
+          tags: ghcr.io/marcmuon/cosine-digger:${{ github.ref_name }},ghcr.io/marcmuon/cosine-digger:latest

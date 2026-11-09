@@ -1,0 +1,23 @@
+/* Feeds uses the existing LCD, panels, cards, badges, and tracklist skin. */
+#feeds-region .feeds-clock {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px 24px;
+  margin-bottom: 18px;
+}
+#feeds-region .feeds-clock .lcd__clock {
+  font: 38px/1 var(--f-lcd);
+  letter-spacing: 1px;
+}
+#feeds-region .feeds-clock .lcd__readout {
+  display: grid;
+  gap: 4px;
+}
+#feeds-region .page__lead + .page__lead { margin-top: 6px; }
+#feeds-region #feeds-last { color: var(--text); }
+#feeds-region .feeds-retry { margin: 8px 0 18px; }
+#feeds-region .plcard { min-width: 0; }
+#feeds-region .plcard__tracks { overscroll-behavior: contain; }
+#feeds-region .pick__title { overflow-wrap: anywhere; }
+#feeds-region .pick__actions { flex-wrap: wrap; }

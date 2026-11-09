@@ -1,0 +1,57 @@
+[project]
+name = "cosine-digger"
+version = "0.4.0"
+description = "Local-first music discovery: a taste profile, self-refreshing YouTube Music playlists and a retro taste-map app, built on cosine.club."
+readme = "README.md"
+authors = [{ name = "Marc Kelechava" }]
+keywords = ["music", "discovery", "cosine.club", "discogs", "youtube-music", "playlists"]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Environment :: Console",
+    "Environment :: Web Environment",
+    "License :: OSI Approved :: GNU Affero General Public License v3",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Topic :: Multimedia :: Sound/Audio",
+]
+requires-python = ">=3.11"
+dependencies = [
+    "httpx>=0.27",
+    "pydantic>=2.0",
+    "python-dotenv>=1.0",
+    "ytmusicapi>=1.10",
+    "typer>=0.12",
+    "rich>=13.0",
+    "questionary>=2.0",
+    "mutagen>=1.47",
+    "fastapi>=0.115",
+    "uvicorn>=0.30",
+]
+
+[project.urls]
+Repository = "https://github.com/marcmuon/cosine-digger"
+Changelog = "https://github.com/marcmuon/cosine-digger/blob/main/CHANGELOG.md"
+
+[project.scripts]
+cosine-digger = "cosine_digger.cli:app"
+
+[project.optional-dependencies]
+browser = ["playwright>=1.47"]
+dev = ["pytest>=8.0", "pytest-asyncio>=0.23"]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/cosine_digger"]
+artifacts = ["src/cosine_digger/web/static/**"]
+
+[tool.hatch.build.targets.sdist]
+exclude = ["/tests", "/docs", "/artifacts", "/.planning"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["."]

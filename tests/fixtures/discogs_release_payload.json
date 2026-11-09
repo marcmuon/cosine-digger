@@ -1,0 +1,70 @@
+{
+  "id": 12345,
+  "title": "Falling / Moonlight",
+  "year": 2003,
+  "uri": "/releases/12345",
+  "resource_url": "https://api.discogs.com/releases/12345",
+  "labels": [
+    {
+      "id": 5001,
+      "name": "Sound Signature",
+      "catno": "SS-001",
+      "entity_type": "1",
+      "resource_url": "https://api.discogs.com/labels/5001"
+    },
+    {
+      "id": 5002,
+      "name": "Ugly Edits",
+      "catno": "UE-012",
+      "entity_type": "1",
+      "resource_url": "https://api.discogs.com/labels/5002"
+    }
+  ],
+  "artists": [
+    {
+      "id": 3001,
+      "name": "Theo Parrish",
+      "role": "",
+      "resource_url": "https://api.discogs.com/artists/3001"
+    }
+  ],
+  "extraartists": [
+    {
+      "id": 3002,
+      "name": "Amp Fiddler",
+      "role": "Producer",
+      "resource_url": "https://api.discogs.com/artists/3002"
+    },
+    {
+      "id": 3003,
+      "name": "Karriem Riggins",
+      "role": "Mixed By",
+      "resource_url": "https://api.discogs.com/artists/3003"
+    },
+    {
+      "id": 3004,
+      "name": "Ron Murphy",
+      "role": "Mastered By",
+      "resource_url": "https://api.discogs.com/artists/3004"
+    },
+    {
+      "id": 3005,
+      "name": "Dez Andres",
+      "role": "Remix",
+      "resource_url": "https://api.discogs.com/artists/3005"
+    }
+  ],
+  "formats": [
+    {
+      "name": "Vinyl",
+      "qty": "1",
+      "descriptions": ["12\"", "33 \u2153 RPM"]
+    }
+  ],
+  "genres": ["Electronic"],
+  "styles": ["Deep House", "Detroit House"],
+  "tracklist": [
+    {"position": "A", "title": "Falling", "duration": "7:32"},
+    {"position": "B", "title": "Moonlight", "duration": "6:15"}
+  ]
+}

@@ -1,0 +1,67 @@
+#setup-region #labels-status { margin: 0; font-size: 14px; overflow-wrap: anywhere; }
+#setup-region #labels-status[data-state="done"] { color: var(--st-success); }
+#setup-region #labels-status[data-state="err"] { color: var(--st-error); }
+#setup-region #labels-status[data-state="stopped"] { color: var(--st-warning); }
+/* An optional token that isn't set up is quiet, never amber (P8). */
+#setup-region #labels-status[data-state="notoken"] { color: var(--muted); }
+#setup-region #labels-progress {
+  display: block;
+  width: 100%;
+  height: 6px;
+  border: 0;
+  appearance: none;
+  background: var(--panel);
+  accent-color: var(--st-pending);
+}
+#setup-region #labels-progress::-webkit-progress-bar { background: var(--panel); }
+#setup-region #labels-progress::-webkit-progress-value { background: var(--st-pending); }
+#setup-region #labels-progress::-moz-progress-bar { background: var(--st-pending); }
+#setup-region .labels-actions { display: flex; flex-wrap: wrap; gap: 8px; }
+#setup-region .labels-budget-row { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; }
+#setup-region #labels-budget { width: 96px; }
+#setup-region #labels-detail:empty { display: none; }
+#setup-region #labels-heading { margin: 0; }
+#setup-region #labels-field { margin-top: 4px; padding-top: 12px; border-top: 1px dashed var(--line); }
+#setup-region #about .panel__body { display: grid; gap: 12px; }
+
+/* Capability cards: the panel skin, one state line each. Muted means not set up;
+   amber and red only mean broken or required. */
+#setup-region .card__body { display: grid; gap: 10px; }
+#setup-region .card__body .field + .field { margin-top: 0; }
+#setup-region .card__desc { font-size: 14px; color: var(--muted); }
+#setup-region .yt__chrome { display: grid; justify-items: start; gap: 6px; margin-top: 4px; }
+#setup-region .card__hint { margin: 0; font-size: 13px; color: var(--muted); }
+#setup-region .card__status { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; min-width: 0; }
+#setup-region .card__state {
+  flex: 1 1 220px;
+  min-width: 0;
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  font: 700 14px/1.4 var(--f-body);
+  color: var(--muted);
+  overflow-wrap: anywhere;
+}
+#setup-region .card__state::before { content: ""; flex: 0 0 8px; height: 8px; background: currentColor; }
+#setup-region .card__state[data-tone="ok"] { color: var(--lcd); text-shadow: 0 0 6px var(--lcd-glow); }
+#setup-region .card__state[data-tone="warn"] { color: var(--amber); }
+#setup-region .card__state[data-tone="fail"] { color: var(--red); }
+#setup-region .card__source { font: 13px/1.3 var(--f-mono); color: var(--muted); }
+#setup-region .card__form { display: grid; gap: 8px; padding-top: 12px; border-top: 1px dashed var(--line); }
+#setup-region .card__form .howto { margin-bottom: 4px; }
+#setup-region .card__body > .alert { margin: 0; }
+#setup-region .panel__actions { gap: 8px; }
+
+#setup-region .health__needed { margin-bottom: 8px; font-weight: 700; color: var(--white); }
+#setup-region .health__ok { color: var(--lcd); text-shadow: 0 0 6px var(--lcd-glow); }
+#setup-region .health__bad { color: var(--red); }
+#setup-region .health__wait { color: var(--muted); }
+#setup-region .check[data-status="off"] .check__status { color: var(--muted); text-transform: none; }
+#setup-region .health__details { margin-top: 12px; }
+#setup-region .health__details summary {
+  cursor: pointer;
+  font: 700 13px/1.4 var(--f-ui);
+  text-transform: uppercase;
+  color: var(--muted);
+}
+#setup-region .health__details .checks { margin-top: 6px; }

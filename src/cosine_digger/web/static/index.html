@@ -1,0 +1,300 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="color-scheme" content="dark">
+  <meta name="theme-color" content="#07080c">
+  <title>cosine-digger</title>
+  <link rel="icon" href="/static/favicon.svg" type="image/svg+xml">
+  <link rel="preload" href="/static/vendor/fonts/vt323/VT323-Regular.ttf" as="font" type="font/ttf" crossorigin>
+  <link rel="preload" href="/static/vendor/fonts/silkscreen/Silkscreen-Bold.ttf" as="font" type="font/ttf" crossorigin>
+  <link rel="stylesheet" href="/static/app.css">
+  <link rel="stylesheet" data-component-style="player" data-href="/static/player.css">
+  <link rel="stylesheet" data-component-style="seedbox" data-href="/static/seedbox.css">
+  <link rel="stylesheet" data-component-style="steplist" data-href="/static/steplist.css">
+  <link rel="stylesheet" data-component-style="trail" data-href="/static/trail.css">
+  <link rel="stylesheet" data-component-style="inspector" data-href="/static/inspector.css">
+  <link rel="stylesheet" data-component-style="moves" data-href="/static/moves.css">
+  <link rel="stylesheet" data-component-style="stepmap" data-href="/static/stepmap.css">
+  <link rel="stylesheet" data-component-style="territory" data-href="/static/territory.css">
+  <link rel="stylesheet" data-component-style="keys" data-href="/static/keys.css">
+  <link rel="stylesheet" data-component-style="feeds" data-href="/static/feeds.css">
+  <link rel="stylesheet" data-component-style="setup" data-href="/static/setup.css">
+  <link rel="stylesheet" data-component-style="connect" data-href="/static/connect.css">
+  <script type="module" src="/static/slice.js"></script>
+</head>
+<body class="slice-shell">
+  <a class="skip-link" href="#step-region">Skip to the step list</a>
+  <div class="device" id="device">
+    <header class="titlebar">
+      <span class="titlebar__grip" aria-hidden="true"></span>
+      <h1 class="titlebar__brand"><span class="brand-mark" aria-hidden="true"></span>COSINE<span class="brand-dot" aria-hidden="true">·</span>DIGGER</h1>
+      <span class="titlebar__grip" aria-hidden="true"></span>
+      <div class="titlebar__tools">
+        <span class="server-led" id="server-led" role="img" aria-label="Server: connecting"></span>
+        <span class="titlebar__version" id="version">v—</span>
+        <button class="chip-btn" id="crt-toggle" type="button" aria-pressed="true" title="Scanline overlay">CRT</button>
+      </div>
+    </header>
+
+    <section class="faceplate" id="player-region" aria-label="Player">
+      <div id="player-frame"><div id="player"></div></div>
+      <div class="player-controls">
+        <div class="lcd" id="lcd">
+          <button id="lcd-title" type="button" aria-label="Go to the playing track" disabled>nothing playing yet</button>
+          <p id="lcd-from"></p>
+          <div id="lcd-note"></div>
+        </div>
+        <div id="transport" role="group" aria-label="Playback controls"></div>
+      </div>
+      <div class="faceplate__right">
+        <canvas class="spectrum" id="spectrum" width="280" height="56" aria-hidden="true"></canvas>
+        <div class="faceplate__row">
+        <div id="view-toggle" class="modes" role="group" aria-label="Dig view">
+          <button class="mode-btn" id="view-list" type="button" aria-pressed="true" aria-describedby="view-disabled-reason" title="Open a dig to switch views" disabled><span class="mode-btn__led" aria-hidden="true"></span>List</button>
+          <button class="mode-btn" id="view-map" type="button" aria-pressed="false" aria-describedby="view-disabled-reason" title="Open a dig to switch views" disabled><span class="mode-btn__led" aria-hidden="true"></span>Map</button>
+        </div>
+        <a class="mode-btn mode-btn--new" id="mode-new" href="#/dig/new" title="Start a new dig from tracks or links (/)">+ New</a>
+        </div>
+        <span class="sr-only" id="view-disabled-reason">Open a dig to switch views</span>
+        <nav class="modes" aria-label="Screens">
+          <a class="mode-btn" id="mode-dig" href="#/dig/new" aria-current="page"><span class="mode-btn__led" aria-hidden="true"></span>Dig</a>
+          <a class="mode-btn" id="mode-feeds" href="#feeds"><span class="mode-btn__led" aria-hidden="true"></span>Feeds</a>
+          <a class="mode-btn" id="mode-setup" href="#setup"><span class="mode-btn__led" aria-hidden="true"></span>Setup</a>
+        </nav>
+      </div>
+    </section>
+
+    <p id="narrow-notice" role="note">cosine-digger is built for desktop windows 1100 px and wider</p>
+    <div id="key-notice" role="status" hidden></div>
+    <main class="stage" id="main" tabindex="-1">
+      <p id="server-banner" role="status" hidden>Lost the local server. Your dig is saved; reconnecting…</p>
+      <section class="view view--scroll" id="new-dig-region" aria-label="New dig"></section>
+      <section class="view view--scroll" id="connect-region" aria-label="Connect cosine.club" hidden></section>
+      <section class="view dig-grid" id="dig-region" aria-label="Dig" data-view="list" hidden>
+        <aside id="trail-region" aria-label="Dig trail"></aside>
+        <section id="step-region" tabindex="-1" aria-label="Step list"></section>
+        <section id="territory-region" tabindex="-1" aria-label="The whole dig, drawn as a map" hidden></section>
+        <div class="dig-right">
+          <section id="stepmap-region" aria-label="Step map"></section>
+          <section id="slim-list-region" aria-label="Step list" hidden></section>
+          <aside id="inspector-region" aria-label="Inspector"></aside>
+        </div>
+      </section>
+      <section class="view view--scroll" id="feeds-region" data-view="feeds" aria-labelledby="feeds-heading" hidden>
+        <div class="page">
+          <header class="page__head">
+            <h2 class="page__title" id="feeds-heading">Feeds</h2>
+            <p class="page__lead" id="feeds-lede"></p>
+            <p class="page__lead" id="feeds-how" hidden></p>
+            <p class="page__lead" id="feeds-last" hidden></p>
+          </header>
+          <div class="alert" id="pl-error" role="alert" hidden></div>
+          <div class="cards" id="pl-cards"></div>
+        </div>
+      </section>
+      <section class="view view--scroll" id="setup-region" data-view="setup" aria-labelledby="setup-heading" hidden>
+        <div class="page">
+          <header class="page__head">
+            <h2 class="page__title" id="setup-heading">Setup</h2>
+            <p class="page__lead">Digging needs only cosine.club; everything else here is optional. Keys stay on this computer.</p>
+          </header>
+
+          <div class="setup-grid">
+            <div class="setup-col" id="setup-cards">
+              <section class="panel card" id="card-cosine" aria-labelledby="card-cosine-title">
+                <header class="panel__bar"><h3 class="panel__title" id="card-cosine-title">cosine.club · Ready to dig</h3></header>
+                <div class="panel__body card__body">
+                  <p class="card__desc">Finds tracks that sound alike. Every dig uses it.</p>
+                  <div class="card__status">
+                    <p class="card__state" id="cosine-state" role="status"></p>
+                    <a class="btn btn--small" id="cosine-fix" href="#connect" hidden>Add key</a>
+                    <button class="btn btn--small" type="button" id="cosine-check" hidden>Try again</button>
+                  </div>
+                  <p class="card__source" id="cosine-source" hidden></p>
+                  <div class="alert" id="cosine-error" role="alert" hidden></div>
+                </div>
+              </section>
+
+              <section class="panel card" id="card-discogs" aria-labelledby="card-discogs-title">
+                <header class="panel__bar"><h3 class="panel__title" id="card-discogs-title">Discogs</h3></header>
+                <div class="panel__body card__body">
+                  <p class="card__desc">Adds label, artist and credited-person moves, plus Facts about each track.</p>
+                  <div class="card__status">
+                    <p class="card__state" id="discogs-state" role="status"></p>
+                    <button class="btn btn--small" type="button" id="discogs-check" hidden>Check</button>
+                    <button class="btn btn--small" type="button" id="discogs-connect" aria-controls="discogs-form" aria-expanded="false" hidden>Connect</button>
+                  </div>
+                  <p class="card__source" id="discogs-source" hidden></p>
+                  <form class="card__form" id="discogs-form" autocomplete="off" novalidate hidden>
+                    <label class="field__label" for="set-discogs">Discogs token</label>
+                    <p class="field__help">Get a token at <a href="https://www.discogs.com/settings/developers" target="_blank" rel="noopener">discogs.com/settings/developers ↗</a></p>
+                    <div class="field__row">
+                      <input class="input" id="set-discogs" type="password" autocomplete="off" spellcheck="false">
+                      <button class="btn btn--go" type="submit" id="discogs-go">Connect</button>
+                      <button class="btn" type="button" data-action="close-card">Cancel</button>
+                    </div>
+                  </form>
+                  <div class="alert" id="discogs-error" role="alert" hidden></div>
+                </div>
+              </section>
+
+              <section class="panel card" id="card-youtube" aria-labelledby="card-youtube-title">
+                <header class="panel__bar"><h3 class="panel__title" id="card-youtube-title">YouTube Music</h3></header>
+                <div class="panel__body card__body">
+                  <p class="card__desc">Writes your Daily and Weekly playlists to YouTube Music. Playing tracks in Digger doesn't need it.</p>
+                  <div class="card__status">
+                    <p class="card__state" id="yt-state" role="status"></p>
+                    <button class="btn btn--small" type="button" id="yt-connect" aria-controls="yt-form" aria-expanded="false" hidden>Connect</button>
+                  </div>
+                  <div class="yt__chrome" id="yt-chrome-block" hidden>
+                    <button class="btn btn--go" type="button" id="yt-chrome">Log in from Chrome</button>
+                    <p class="card__hint">Reads your YouTube Music login from Chrome on this Mac, no developer tools. When macOS asks to use “Chrome Safe Storage”, click Allow (not Always Allow). Connect is the by-hand way.</p>
+                    <div class="alert" id="yt-chrome-error" role="alert" hidden></div>
+                  </div>
+                  <form class="card__form" id="yt-form" autocomplete="off" hidden>
+                    <ol class="howto">
+                      <li>Open <strong>music.youtube.com</strong> in your browser while signed in.</li>
+                      <li>Open developer tools (<kbd>⌥⌘I</kbd> / <kbd>F12</kbd>) and go to <strong>Network</strong>.</li>
+                      <li>Type <strong>browse</strong> in the filter, then click around the site until a request shows up.</li>
+                      <li>Click a <strong>POST</strong> request to music.youtube.com and find its <strong>Request Headers</strong>.</li>
+                      <li>Copy them: right-click the request → Copy → <strong>Copy as cURL</strong> (Chrome, Brave, Edge), or Copy Value → Copy Request Headers (Firefox). Selecting the Request Headers section by hand works too.</li>
+                      <li>Paste below and log in. The headers go straight to the server and are never shown again.</li>
+                    </ol>
+                    <label class="field__label" for="yt-headers">Request headers</label>
+                    <textarea class="input input--mono yt__headers" id="yt-headers" rows="5" spellcheck="false" autocomplete="off"
+                      placeholder="accept: */*&#10;authorization: SAPISIDHASH …&#10;cookie: …"></textarea>
+                    <div class="alert" id="yt-error" role="alert" hidden></div>
+                    <div class="panel__actions">
+                      <button class="btn" type="button" data-action="close-card">Cancel</button>
+                      <button class="btn btn--go" type="submit" id="yt-go">Log in</button>
+                    </div>
+                  </form>
+                </div>
+                <form id="settings-form" autocomplete="off" novalidate>
+                  <header class="panel__bar panel__bar--inner"><h4 class="panel__title">Schedule</h4></header>
+                  <div class="panel__body">
+                    <div class="field-grid">
+                      <div class="field">
+                        <label class="field__label" for="set-daily-time">Daily at</label>
+                        <input class="input" id="set-daily-time" type="time" step="60" required>
+                      </div>
+                      <div class="field">
+                        <label class="field__label" for="set-daily-size">Daily size</label>
+                        <input class="input" id="set-daily-size" type="number" min="5" max="100" step="1" inputmode="numeric" required>
+                      </div>
+                      <div class="field">
+                        <label class="field__label" for="set-weekly-day">Weekly on</label>
+                        <select class="input" id="set-weekly-day">
+                          <option value="mon">Monday</option><option value="tue">Tuesday</option><option value="wed">Wednesday</option>
+                          <option value="thu">Thursday</option><option value="fri">Friday</option><option value="sat">Saturday</option>
+                          <option value="sun">Sunday</option>
+                        </select>
+                      </div>
+                      <div class="field">
+                        <label class="field__label" for="set-weekly-time">Weekly at</label>
+                        <input class="input" id="set-weekly-time" type="time" step="60" required>
+                      </div>
+                      <div class="field">
+                        <label class="field__label" for="set-weekly-size">Weekly size</label>
+                        <input class="input" id="set-weekly-size" type="number" min="5" max="100" step="1" inputmode="numeric" required>
+                      </div>
+                    </div>
+                    <p class="field__help">Sizes run from 5 to 100 tracks.</p>
+                    <p class="field__help">Run now uses the playlist sizes. The times apply when Digger runs its schedule (cosine-digger start --scheduler, serve or Docker) or an installed schedule runs.</p>
+                  </div>
+                  <footer class="panel__foot">
+                    <div class="alert" id="settings-error" role="alert" hidden></div>
+                    <p class="panel__note" id="settings-note" role="status"></p>
+                    <button class="btn btn--go" type="submit" id="settings-save">Save schedule</button>
+                  </footer>
+                </form>
+              </section>
+
+              <section class="panel card" id="card-music" aria-labelledby="card-music-title">
+                <header class="panel__bar"><h3 class="panel__title" id="card-music-title">Music folder</h3></header>
+                <div class="panel__body card__body">
+                  <p class="card__desc">Starts digs from your own files and keeps tracks you own out of your picks.</p>
+                  <p class="card__state" id="music-state" hidden></p>
+                  <p id="library-summary" aria-live="polite" hidden></p>
+                  <div class="field">
+                    <label class="sr-only" for="set-music">Music folder path</label>
+                    <div class="field__row">
+                      <input class="input input--mono" id="set-music" type="text" spellcheck="false" placeholder="/Users/you/Music">
+                      <button class="btn" type="button" id="scan-go">Scan now</button>
+                    </div>
+                    <p class="field__help">Any folder of tagged audio files works; Plex is optional. Scanning only reads your files and never changes their tags. Tracks you own never come back as picks or land in a playlist.</p>
+                    <ol class="log log--compact" id="scan-log" aria-label="Scan progress" hidden></ol>
+                    <div class="alert" id="scan-error" role="alert" hidden></div>
+                  </div>
+                </div>
+              </section>
+
+              <section class="panel card" id="card-exa" aria-labelledby="card-exa-title">
+                <header class="panel__bar"><h3 class="panel__title" id="card-exa-title">Exa</h3></header>
+                <div class="panel__body card__body">
+                  <p class="card__desc">Adds fresh releases to your playlists.</p>
+                  <div class="card__status">
+                    <p class="card__state" id="exa-state" role="status"></p>
+                    <button class="btn btn--small" type="button" id="exa-check" hidden>Check</button>
+                    <button class="btn btn--small" type="button" id="exa-connect" aria-controls="exa-form" aria-expanded="false" hidden>Connect</button>
+                  </div>
+                  <p class="card__source" id="exa-source" hidden></p>
+                  <form class="card__form" id="exa-form" autocomplete="off" novalidate hidden>
+                    <label class="field__label" for="set-exa">Exa API key</label>
+                    <div class="field__row">
+                      <input class="input" id="set-exa" type="password" autocomplete="off" spellcheck="false">
+                      <button class="btn btn--go" type="submit" id="exa-go">Connect</button>
+                      <button class="btn" type="button" data-action="close-card">Cancel</button>
+                    </div>
+                  </form>
+                  <div class="alert" id="exa-error" role="alert" hidden></div>
+                </div>
+              </section>
+            </div>
+
+            <div class="setup-col">
+              <section class="panel" aria-labelledby="health-heading">
+                <header class="panel__bar"><h3 class="panel__title" id="health-heading">Health</h3>
+                  <button class="btn btn--small" type="button" id="health-refresh">Check</button></header>
+                <div class="panel__body">
+                  <div class="alert" id="health-error" role="alert" hidden></div>
+                  <p class="health__needed" id="health-needed"></p>
+                  <ul class="checks" id="health-list"></ul>
+                  <details class="health__details" id="health-details">
+                    <summary>Details</summary>
+                    <ul class="checks" id="health-details-list"></ul>
+                  </details>
+                </div>
+              </section>
+
+              <section class="panel" id="about" aria-labelledby="about-heading">
+                <header class="panel__bar"><h3 class="panel__title" id="about-heading">About</h3></header>
+                <div class="panel__body">
+                  <p id="about-version">cosine-digger runs on this computer and keeps your digs here.</p>
+                  <p>This app embeds YouTube's player to play tracks.
+                    <a href="https://www.youtube.com/t/terms" target="_blank" rel="noopener">YouTube Terms of Service</a> ·
+                    <a href="https://policies.google.com/privacy" target="_blank" rel="noopener">Google Privacy Policy</a>
+                  </p>
+                  <p>If your browser blocks YouTube's cookies, YouTube can't see your Premium account, so ads may play.</p>
+                </div>
+              </section>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <div class="stage-overlay" id="moves-region" hidden></div>
+      <div class="stage-overlay" id="sheet-region" hidden></div>
+      <div class="toasts" id="page-toasts" hidden></div>
+    </main>
+    <footer id="key-strip" aria-label="Keyboard hints">
+      <div id="key-hints"></div>
+      <div id="toast-region" hidden></div>
+    </footer>
+  </div>
+  <p class="sr-only" id="announcer" aria-live="polite" aria-atomic="true"></p>
+  <div class="crt" aria-hidden="true"></div>
+</body>
+</html>

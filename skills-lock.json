@@ -1,0 +1,26 @@
+{
+  "version": 1,
+  "skills": {
+    "axiom-audit-ux-flow": {
+      "source": "CharlesWiltgen/Axiom",
+      "ref": "main",
+      "sourceType": "github",
+      "skillPath": "axiom-codex/skills/axiom-audit-ux-flow/SKILL.md",
+      "computedHash": "d6d5313bd6c74797bbb567fca83eafbe468847661485f7c0483c246e2506dc17"
+    },
+    "axiom-design": {
+      "source": "CharlesWiltgen/Axiom",
+      "ref": "main",
+      "sourceType": "github",
+      "skillPath": "axiom-codex/skills/axiom-design/SKILL.md",
+      "computedHash": "9269f69a074cd2909963e5ae6af6bb92e0dbb1cd8679fe9164b55c69f8d07187"
+    },
+    "axiom-swiftui": {
+      "source": "CharlesWiltgen/Axiom",
+      "ref": "main",
+      "sourceType": "github",
+      "skillPath": "axiom-codex/skills/axiom-swiftui/SKILL.md",
+      "computedHash": "97269e8196aca7a91d088dd362aae04270ae0fb9f3016739a5b674a9755fbb48"
+    }
+  }
+}

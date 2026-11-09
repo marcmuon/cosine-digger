@@ -1,0 +1,93 @@
+#trail-region.trail { position: relative; overflow: visible; }
+#trail-region .trail-panel {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  min-height: 0;
+  overflow: hidden;
+  background: var(--panel);
+  border: 2px solid;
+  border-color: var(--bevel-in);
+  font-family: var(--f-body);
+}
+#trail-region .trail-scroll { flex: 1; min-height: 0; overflow: auto; padding: 6px; scroll-padding: 6px; }
+#trail-region .trail-heading { display: flex; align-items: center; gap: 6px; }
+#trail-region .trail-name { flex: 1; min-width: 0; margin: 0; color: var(--white); font: 0.875rem var(--f-ui); text-transform: uppercase; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+#trail-region .trail-switch { flex: 0 0 36px; min-width: 36px; min-height: 36px; padding: 0; }
+#trail-region .trail-meta { margin: 2px 0 12px; color: var(--muted); font-size: 0.8125rem; }
+/* Sent: Open fills the row and Update sits under it, beside what the last send did. */
+#trail-region .trail-yt { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: 6px; margin: -4px 0 14px; }
+#trail-region .trail-yt :is(.trail-yt-open, .trail-yt-send) { min-width: 0; }
+#trail-region .trail-yt-open, #trail-region .trail-yt[data-layout="stack"] > * { grid-column: 1 / -1; }
+#trail-region .trail-yt[data-layout="row"] .trail-yt-send { grid-row: 2; grid-column: 2; }
+#trail-region .trail-yt[data-layout="row"] .trail-yt-status { grid-row: 2; grid-column: 1; }
+#trail-region .trail-yt-send:disabled { background: linear-gradient(180deg, #333845, #252a33); border-color: var(--bevel-out); }
+#trail-region .trail-yt-status { margin: 0; color: var(--muted); font-size: 0.75rem; line-height: 1.35; }
+#trail-region .trail-yt-status[data-tone="error"] { color: var(--st-error); }
+#trail-region .trail-yt-status[data-tone="warn"] { color: var(--amber); }
+#trail-region .trail-tree { padding: 2px; }
+#trail-region .trail-row {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  width: 100%;
+  height: 36px;
+  min-height: 36px;
+  padding: 0 4px 0 calc(4px + var(--trail-depth) * 12px);
+  border: 0;
+  border-bottom: 1px solid var(--line);
+  background: transparent;
+  color: var(--text);
+  font: 0.8125rem var(--f-body);
+  text-align: left;
+  text-decoration: none;
+  cursor: pointer;
+}
+#trail-region .trail-row:hover, #trail-region .trail-kept-row:hover, #trail-region .trail-switcher-row:hover { background: var(--panel-2); }
+#trail-region .trail-row[aria-current="true"] { background: var(--panel-3); }
+#trail-region .trail-row[aria-current="true"]::before { content: ''; position: absolute; left: 0; top: 0; bottom: 0; width: 4px; background: var(--mark-selected); }
+#trail-region :is(.trail-row, .trail-kept-row, .trail-kept-toggle, .trail-switcher-row):focus-visible { outline: 3px solid var(--focus); outline-offset: 2px; }
+#trail-region .trail-number { flex-shrink: 0; font: 1.25rem var(--f-lcd); color: var(--amber); }
+#trail-region .trail-row-name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+#trail-region :is(.trail-kind, .trail-further, .trail-markers, .trail-changed) { flex-shrink: 0; font-size: 0.75rem; }
+#trail-region :is(.trail-kind, .trail-further, .trail-status) { color: var(--muted); }
+#trail-region .trail-changed { color: var(--st-info); border: 1px solid var(--st-info); padding: 1px 2px; }
+#trail-region .trail-markers { display: flex; align-items: center; gap: 3px; margin-left: auto; }
+#trail-region .trail-playing { color: var(--mark-playing); }
+#trail-region .trail-keeps { color: var(--mark-kept); }
+#trail-region .trail-passes { color: var(--mark-passed); }
+#trail-region .trail-status[data-status="running"] { color: var(--st-pending); }
+#trail-region .trail-status[data-status="failed"] { color: var(--st-error); }
+#trail-region .trail-row[data-type="stub"] { color: var(--muted); }
+#trail-region .trail-row[data-type="stub"] .trail-number { display: none; }
+#trail-region .trail-row[data-type="stub"] :is(.trail-changed, .trail-kind, .trail-further, .trail-markers) { display: none; }
+#trail-region .trail-kept { margin-top: 14px; }
+#trail-region .trail-kept-toggle { display: flex; align-items: center; gap: 6px; width: 100%; min-height: 36px; padding: 4px; border: 0; background: transparent; color: var(--text); font: 0.8125rem var(--f-body); text-align: left; cursor: pointer; }
+#trail-region .trail-kept-list { padding: 2px; }
+#trail-region .trail-kept-row { display: block; min-height: 36px; padding: 8px 4px; color: var(--text); font-size: 0.8125rem; text-decoration: none; }
+#trail-region .trail-kept-line { display: flex; align-items: baseline; }
+#trail-region .trail-kept-star { flex-shrink: 0; color: var(--mark-kept); }
+#trail-region .trail-kept-name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+#trail-region .trail-kept-step { flex-shrink: 0; color: var(--muted); white-space: pre; }
+#trail-region .trail-kept-detail { display: block; color: var(--muted); font-size: 0.75rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+#trail-region .trail-kept-empty { margin: 4px; color: var(--muted); font-size: 0.8125rem; }
+#trail-region .trail-legend { flex-shrink: 0; margin: 0; padding: 8px 6px; border-top: 1px solid var(--line); color: var(--muted); font-size: 0.75rem; }
+#trail-region .trail-switcher { position: absolute; z-index: 1; top: 48px; left: 6px; right: 6px; max-height: calc(100% - 60px); padding: 6px; overflow: auto; scroll-padding: 6px; background: var(--panel-2); border: 2px solid; border-color: var(--bevel-out); box-shadow: var(--hard-shadow); }
+#trail-region .trail-switcher-row { display: block; min-height: 36px; padding: 8px 4px; color: var(--text); font-size: 0.8125rem; overflow-wrap: anywhere; text-decoration: none; }
+#trail-region .trail-rail-marker { display: none; }
+#trail-region[data-rail="true"] .trail-panel { width: 56px; transition: width 120ms ease-out; }
+#trail-region[data-rail="true"][data-expanded="true"] { z-index: 2; }
+#trail-region[data-rail="true"][data-expanded="true"] .trail-panel { width: 240px; border-color: var(--bevel-out); box-shadow: var(--hard-shadow); }
+#trail-region[data-rail="true"][data-expanded="false"] :is(.trail-header, .trail-kept, .trail-legend) { display: none; }
+#trail-region[data-rail="true"][data-expanded="false"] .trail-scroll { padding: 4px; overflow-x: hidden; }
+#trail-region[data-rail="true"][data-expanded="false"] .trail-tree { padding: 2px; }
+#trail-region[data-rail="true"][data-expanded="false"] .trail-row { flex-direction: column; justify-content: center; gap: 0; padding: 0; height: 42px; }
+#trail-region[data-rail="true"][data-expanded="false"] .trail-row[data-type="stub"] .trail-number { display: block; }
+#trail-region[data-rail="true"][data-expanded="false"] :is(.trail-row-name, .trail-kind, .trail-changed, .trail-further, .trail-markers) { display: none; }
+#trail-region[data-rail="true"][data-expanded="false"] .trail-rail-marker { display: block; height: 12px; color: var(--muted); font-size: 0.75rem; line-height: 1; }
+@media (prefers-reduced-motion: reduce) {
+  #trail-region .trail-panel { transition: none; }
+}

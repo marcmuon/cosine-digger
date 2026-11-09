@@ -1,0 +1,63 @@
+{
+  "pagination": {
+    "page": 1,
+    "pages": 4,
+    "per_page": 5,
+    "items": 18,
+    "urls": {
+      "next": "https://api.discogs.com/labels/5001/releases?page=2&per_page=5"
+    }
+  },
+  "releases": [
+    {
+      "id": 40001,
+      "title": "Moondog Medicine Show",
+      "artist": "Marcellus Pittman",
+      "year": 2023,
+      "catno": "SS-042",
+      "format": "12\"",
+      "status": "Accepted",
+      "resource_url": "https://api.discogs.com/releases/40001"
+    },
+    {
+      "id": 40002,
+      "title": "American Intelligence",
+      "artist": "Theo Parrish",
+      "year": 2022,
+      "catno": "SS-041",
+      "format": "2xLP",
+      "status": "Accepted",
+      "resource_url": "https://api.discogs.com/releases/40002"
+    },
+    {
+      "id": 40003,
+      "title": "Sketches",
+      "artist": "Duminie Deporres",
+      "year": 2021,
+      "catno": "SS-039",
+      "format": "12\"",
+      "status": "Accepted",
+      "resource_url": "https://api.discogs.com/releases/40003"
+    },
+    {
+      "id": 40004,
+      "title": "Wukkout!",
+      "artist": "Theo Parrish",
+      "year": 2020,
+      "catno": "SS-038",
+      "format": "12\"",
+      "status": "Accepted",
+      "resource_url": "https://api.discogs.com/releases/40004"
+    },
+    {
+      "id": 40005,
+      "title": "Rotating Assembly Presents: Natural Aspirations",
+      "artist": "Rotating Assembly",
+      "year": 2019,
+      "catno": "SS-035",
+      "format": "3xLP",
+      "status": "Accepted",
+      "resource_url": "https://api.discogs.com/releases/40005"
+    }
+  ]
+}

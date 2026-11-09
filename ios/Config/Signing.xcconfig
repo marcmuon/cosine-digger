@@ -1,0 +1,15 @@
+// Signing for the Digger app. Leave this file as it is and put your own team in
+// Config/Signing.local.xcconfig (ignored by git), for example:
+//
+//   DEVELOPMENT_TEAM = ABCDE12345
+//   PRODUCT_BUNDLE_IDENTIFIER = com.yourname.cosinedigger
+//
+// Find your team ID in Xcode > Settings > Accounts, or at developer.apple.com/account.
+// The Simulator needs no team. YouTube sees the bundle identifier as the app's identity,
+// so the player follows whatever identifier you choose.
+
+CODE_SIGN_STYLE = Automatic
+DEVELOPMENT_TEAM =
+PRODUCT_BUNDLE_IDENTIFIER = com.marcmuon.cosinedigger
+
+#include? "Signing.local.xcconfig"

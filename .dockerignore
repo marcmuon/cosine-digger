@@ -1,0 +1,17 @@
+.git
+.venv
+.planning
+artifacts
+docs
+tests
+.env
+.env.*
+*.db
+*.db-*
+**/__pycache__
+*.py[cod]
+.claude
+.qwen
+done.txt
+node_modules
+.pytest_cache

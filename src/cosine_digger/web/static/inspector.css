@@ -1,0 +1,50 @@
+#inspector-region.inspector {
+  background: var(--panel);
+  border: 2px solid;
+  border-color: var(--bevel-in);
+  font: 0.875rem/1.5 var(--f-body);
+  scroll-padding: 6px;
+}
+#inspector-region .inspector-body { padding: 12px; }
+#inspector-region .inspector-title-block { display: flex; align-items: flex-start; gap: 8px; }
+#inspector-region .inspector-title { margin: 0; color: var(--white); font: 700 0.9375rem/1.5 var(--f-body); min-width: 0; overflow-wrap: anywhere; }
+#inspector-region .inspector-thumb { width: 56px; height: 56px; flex: 0 0 56px; object-fit: cover; border: 1px solid var(--line); }
+#inspector-region .inspector-actions { display: flex; flex-wrap: wrap; align-items: flex-start; gap: 4px; margin-top: 8px; }
+#inspector-region .btn { min-height: var(--tap); min-width: 36px; white-space: normal; overflow-wrap: anywhere; font-size: 0.75rem; line-height: 1.4; padding: 4px 8px; text-align: left; }
+#inspector-region p { margin: 8px 0; }
+#inspector-region .inspector-section { margin-top: 16px; padding-top: 8px; border-top: 1px solid var(--line); }
+#inspector-region .field__label { margin: 0; color: var(--text); }
+#inspector-region .inspector-muted { color: var(--muted); font-size: 0.8125rem; }
+#inspector-region .inspector-warning { color: var(--st-warning); }
+#inspector-region .inspector-also-on { color: var(--node-label); }
+#inspector-region .inspector-link {
+  display: inline-flex;
+  align-items: center;
+  min-height: 36px;
+  min-width: 24px;
+  max-width: 100%;
+  padding: 4px;
+  color: var(--lcd-soft);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  overflow-wrap: anywhere;
+}
+#inspector-region .inspector-link:hover { color: var(--white); background: var(--panel-2); }
+#inspector-region .inspector-link:active { color: var(--lcd); }
+#inspector-region :is(button, a, summary, h3):focus-visible { outline: 3px solid var(--focus); outline-offset: 2px; }
+#inspector-region .inspector-actions > .inspector-link { flex-basis: 100%; }
+#inspector-region .inspector-members { display: flex; flex-direction: column; }
+#inspector-region .inspector-scores,
+#inspector-region .inspector-facts { display: grid; gap: 8px; margin: 8px 0; }
+#inspector-region .inspector-scores { grid-template-columns: minmax(0, 1fr) auto; font-variant-numeric: tabular-nums; }
+#inspector-region .inspector-facts { grid-template-columns: 48px minmax(0, 1fr); }
+#inspector-region dt { color: var(--muted); }
+#inspector-region dd { margin: 0; min-width: 0; }
+#inspector-region .inspector-move { display: flex; flex-direction: column; align-items: flex-start; gap: 4px; }
+/* Facts: a small "Dig from ▸" beside each name, not a full-size button under it. */
+#inspector-region .inspector-facts .inspector-move { display: inline-flex; flex-direction: row; align-items: center; margin-left: 8px; vertical-align: middle; }
+#inspector-region .inspector-facts .inspector-move .btn--small { min-height: 24px; padding: 2px 6px; font-size: 11px; }
+#inspector-region h4 { margin: 8px 0 0; font-weight: 400; }
+#inspector-region summary { min-height: 36px; padding: 6px 4px; cursor: pointer; color: var(--lcd-soft); }
+#inspector-region summary:hover { background: var(--panel-2); }
+#inspector-region .inspector-facts-source { margin-top: 0; }

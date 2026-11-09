@@ -1,0 +1,73 @@
+#player-region #lcd-title {
+  display: flex;
+  align-items: baseline;
+  gap: 12px;
+}
+
+#player-region .player-caption {
+  min-width: 0;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  flex: 1;
+}
+
+#player-region .player-time {
+  flex: 0 0 auto;
+  font-variant-numeric: tabular-nums;
+}
+
+#player-region[data-player-state="playing"] #lcd-title {
+  color: var(--lcd);
+  text-shadow: 0 0 6px var(--lcd-glow);
+}
+
+#player-region #lcd-from { margin: 0; min-height: 1.1em; }
+
+#player-region #lcd-note {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  align-content: start;
+  /* Keep room for a note and its 36px actions, including when they wrap. */
+  height: calc(1.1em + var(--tap) + 4px);
+  overflow: auto;
+  gap: 4px 8px;
+}
+
+#player-region #lcd-note.player-note-warning { color: var(--st-warning); }
+
+#player-region .player-note-warning > span:first-child::before { content: "! "; }
+
+#player-region .player-note-actions {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+#player-region .player-note-actions .btn {
+  min-height: var(--tap);
+  max-width: 100%;
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+
+#player-region .icon-btn[aria-disabled="true"] { opacity: 0.5; }
+
+#player-region #transport [data-action="play"][aria-label="Pause"],
+#player-region #transport .transport-unit {
+  font-family: var(--f-body);
+}
+
+#player-region #player:not(iframe) {
+  display: grid;
+  place-items: center;
+  color: var(--lcd-dim);
+  font: 1.5rem/1 var(--f-lcd);
+}
+
+@media (max-width: 800px) {
+  #player-region #lcd-title { flex-wrap: wrap; gap: 2px; }
+  #player-region .player-caption { flex-basis: 100%; }
+  #player-region .player-time { margin-left: auto; }
+}

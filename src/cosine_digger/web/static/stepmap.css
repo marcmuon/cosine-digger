@@ -1,0 +1,83 @@
+#stepmap-region.stepmap {
+  display: flex;
+  flex-direction: column;
+  background: var(--panel);
+  border: 2px solid;
+  border-color: var(--bevel-in);
+}
+#stepmap-region .panel__bar { flex: 0 0 auto; gap: 4px; }
+#stepmap-region .panel__title { display: flex; min-width: 0; font-size: 0.875rem; white-space: nowrap; overflow: hidden; }
+#stepmap-region .panel__title .stepmap-title-words { min-width: 0; white-space: pre; overflow: hidden; text-overflow: ellipsis; }
+#stepmap-region .panel__title .stepmap-title-number { flex: 0 0 auto; }
+#stepmap-region .stepmap-tools { display: flex; gap: 2px; margin-left: auto; }
+#stepmap-region .stepmap-tools button { min-width: var(--tap); min-height: var(--tap); padding: 2px 6px; }
+#stepmap-region .stepmap-surface { position: relative; flex: 1 1 0; min-height: 0; overflow: hidden; }
+#stepmap-region canvas {
+  display: block;
+  width: 100%;
+  height: 100%;
+  background: var(--panel);
+  font: 0.75rem var(--f-body);
+  touch-action: none;
+  cursor: grab;
+}
+#stepmap-region canvas:focus-visible { outline: 3px solid var(--focus); outline-offset: -4px; }
+#stepmap-region canvas.is-over-node { cursor: pointer; }
+#stepmap-region canvas.is-dragging { cursor: grabbing; }
+#stepmap-region #stepmap-caption {
+  position: absolute;
+  top: 4px;
+  left: 4px;
+  right: 4px;
+  pointer-events: none;
+  white-space: pre-line;
+  font: 0.75rem/1.25 var(--f-body);
+  color: var(--muted);
+}
+#stepmap-region #stepmap-caption.stepmap-warning { color: var(--st-warning); }
+#stepmap-region .stepmap-from {
+  position: absolute;
+  min-width: var(--tap);
+  min-height: var(--tap);
+  max-width: calc(100% - 8px);
+  padding: 0 4px;
+  border: 0;
+  color: var(--muted);
+  background: var(--panel);
+  font: 0.75rem var(--f-body);
+  cursor: pointer;
+}
+#stepmap-region .stepmap-from:hover { color: var(--text); }
+#stepmap-region #stepmap-legend {
+  flex: 0 0 auto;
+  margin: 0;
+  padding: 4px 6px;
+  color: var(--muted);
+  font: 0.75rem/1.25 var(--f-body);
+}
+@media (max-height: 759px) {
+  #stepmap-region #stepmap-legend {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    overflow: hidden;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+    background: var(--panel);
+  }
+}
+#stepmap-region .stepmap-tooltip {
+  position: absolute;
+  z-index: 1;
+  max-width: calc(100% - 8px);
+  max-height: calc(100% - 8px);
+  overflow: hidden;
+  padding: 4px 6px;
+  pointer-events: none;
+  overflow-wrap: anywhere;
+  color: var(--text);
+  background: var(--panel-2);
+  border: 1px solid var(--line);
+  font: 0.75rem/1.3 var(--f-body);
+}
