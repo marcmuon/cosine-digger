@@ -89,7 +89,7 @@ export function mountSetup(root, {store, h, text}) {
     h('h4', {id: 'labels-heading', className: 'field__label'}, text('S-SET-FILL-LABEL')),
     status, progress, counters, h('div', {className: 'labels-actions'}, go, stop), detail,
     h('div', {className: 'labels-budget-row'},
-      h('label', {className: 'field__label', htmlFor: 'labels-budget'}, 'Discogs lookup budget'), budget),
+      h('label', {className: 'field__label', for: 'labels-budget'}, 'Discogs lookup budget'), budget),
     budgetHelp,
     h('p', {className: 'field__help'}, 'The limit counts requests, including retries. Cached lookups use no requests.'),
     h('div', {id: 'labels-error', className: 'alert', role: 'alert', hidden: true}));

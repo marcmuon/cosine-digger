@@ -88,7 +88,7 @@
 }
 
 #moves-region button:active:not([aria-disabled="true"]) {
-  box-shadow: var(--bevel-in);
+  border-color: var(--bevel-in);
 }
 
 #moves-region :focus-visible {

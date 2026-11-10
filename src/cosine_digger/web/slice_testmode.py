@@ -25,7 +25,7 @@ from threading import Event, Lock
 
 import httpx
 
-from .. import chain, discogs, youtube
+from .. import chain, youtube
 from ..client import BASE_URL, CosineClient
 from ..httpcache import HttpCache
 from ..models import Track
