@@ -75,11 +75,19 @@ class AppConfig:
     sources: Mapping[str, Source] = field(default_factory=lambda: MappingProxyType({}))
 
 
+# "Mon" and "monday" mean mon; the scheduler compares against these seven.
+_DAY_NAMES = {name: name[:3] for name in ("monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday")}
+_DAY_NAMES.update({short: short for short in list(_DAY_NAMES.values())})
+
+
 def _read_settings(home: Path) -> dict:
+    path = home / "settings.json"
     try:
-        settings = json.loads((home / "settings.json").read_text())
+        settings = json.loads(path.read_text())
     except FileNotFoundError:
         return {}
+    except ValueError as exc:
+        raise ValueError(f"{path} is not valid JSON ({exc})") from None
     if not isinstance(settings, dict):
         raise ValueError("settings.json must contain a JSON object")
     return settings
@@ -153,6 +161,15 @@ def load_config(environ: Mapping[str, str] | None = None) -> AppConfig:
             values[key] = int(values[key])
         except (ValueError, TypeError):
             raise ValueError(f"{key} must be an integer") from None
+    # The Setup page checks these on save; .env, exported variables and a hand-edited
+    # settings.json arrive here unchecked, and a bad one failed every scheduler tick.
+    for key in ("daily_time", "weekly_time"):
+        if not re.fullmatch(r"(?:[01]\d|2[0-3]):[0-5]\d", str(values[key])):
+            raise ValueError(f"{key} must be a 24-hour HH:MM time such as 06:00, not {values[key]!r}")
+    day = str(values["weekly_day"]).strip().lower()
+    values["weekly_day"] = _DAY_NAMES.get(day, day)
+    if values["weekly_day"] not in _DAY_NAMES.values():
+        raise ValueError(f"weekly_day must be one of mon, tue, wed, thu, fri, sat, sun, not {day!r}")
     return AppConfig(**values, sources=MappingProxyType(sources))
 
 

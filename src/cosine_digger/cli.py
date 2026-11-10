@@ -8,6 +8,7 @@ from typing import Literal
 
 import typer
 from rich.console import Console
+from rich.markup import escape
 from rich.table import Table
 from rich.text import Text
 
@@ -22,8 +23,6 @@ from .discogs import (
     fetch_artist_releases,
     fetch_artist_info,
     fetch_release_artists,
-    ArtistInfo,
-    CreditedArtist,
     DEFAULT_PRODUCER_ROLES,
     DiscogsError,
 )
@@ -60,16 +59,7 @@ def _validate_scorer(value: str) -> str:
 
 
 from . import seeds as _seeds
-from .seeds import (  # noqa: F401  (re-exported for commands and tests)
-    _artist_matches,
-    _artist_matches_strict,
-    _discogs_fallback_query,
-    _is_track_not_found,
-    _parse_artist_title,
-    _title_matches,
-    _track_title,
-    _youtube_title,
-)
+from .seeds import _artist_matches, _is_track_not_found, _track_title
 
 
 def _fallback_discogs_search(seed: str, client: CosineClient, limit: int = 5) -> Track | None:
@@ -125,8 +115,11 @@ def _youtube_cell(track: Track) -> str:
 
 
 def _seed_cell(track: Track) -> str:
-    """Format as 'Artist - Track' for easy copy-paste as a seed."""
-    return f"{track.artist} - {_track_title(track)}"
+    """Format as 'Artist - Track' for easy copy-paste as a seed.
+
+    Escaped for Rich: unescaped, "[b side]" in a title is read as a style tag and
+    vanishes, and "[/remix]" raises MarkupError."""
+    return escape(f"{track.artist} - {_track_title(track)}")
 
 
 def _render_dig_table(results) -> Table:
@@ -329,7 +322,10 @@ def _youtube_export(tracks: list[Track], name: str, description: str, conn=None)
         if own:
             conn.close()
     state = "verified" if report.verified else "NOT verified: open it to check"
-    console.print(f"[green]Playlist:[/] {report.playlist_url}")
+    from . import youtube as _youtube
+
+    link = _youtube.account_link(report.playlist_url, _youtube.login_account(_youtube.auth_path()))
+    console.print(f"[green]Playlist:[/] {link}")
     console.print(f"{len(report.added)}/{len(report.requested)} tracks in the playlist · {state}")
     return report
 
@@ -753,6 +749,17 @@ def artist_dig(
         cosine-digger artist-dig https://www.discogs.com/artist/123-Rat-Heart
         cosine-digger artist-dig https://www.discogs.com/release/456-Some-Release
     """
+    if json_output and output is not None:
+        print('{"error": "--json and --output are mutually exclusive"}', file=sys.stderr)
+        raise typer.Exit(code=2)
+    if json_output:
+        # Progress goes to stderr, as in dig and label-dig; put it back however the command ends.
+        original_stderr = console.stderr
+        console.stderr = True
+        import click
+
+        click.get_current_context().call_on_close(lambda: setattr(console, "stderr", original_stderr))
+
     # Determine if this is an artist URL or a release URL
     artist_id = extract_artist_id(url)
     artist_name: str | None = None
@@ -912,7 +919,8 @@ def artist_dig(
                         for i, item in enumerate(ranked)
                     ],
                 }
-                console.print(json.dumps(payload, indent=2))
+                # Not console.print: Rich would wrap long lines and eat "[bracketed]" text.
+                sys.stdout.write(json.dumps(payload, indent=2, default=str) + "\n")
                 return
 
             _finish_dig(
@@ -1257,7 +1265,7 @@ def _open_db(*, require: bool = True):
     db_path = load_config().db_path
     if not db_path.exists():
         if require:
-            console.print("No taste DB found. Run [bold]taste scan[/bold] or [bold]chain-dig[/bold] first.")
+            console.print("No taste DB found. Run [bold]taste-scan[/bold] or [bold]chain-dig[/bold] first.")
             raise typer.Exit(code=1)
         return None
     from .taste import _migrate_schema
@@ -1273,7 +1281,7 @@ def _open_db(*, require: bool = True):
 @app.command(name="chain-dig")
 def chain_dig_cmd(
     seeds: list[str] = typer.Argument(..., help="URLs or 'Artist - Track' text"),
-    hops: int = typer.Option(2, "--hops", help="Number of hops to chain (1-3)"),
+    hops: int = typer.Option(2, "--hops", help="Number of hops to chain (1-4)"),
     branches: int = typer.Option(3, "--branches", "-b", help="Branches to follow per hop"),
     limit: int = typer.Option(20, "--limit", "-l", help="Max results"),
     limit_per_seed: int = typer.Option(50, "--limit-per-seed", hidden=True),
@@ -1590,7 +1598,7 @@ def taste_dig_cmd(
 
     db_path = db or str(load_config().db_path)
     if not Path(db_path).exists():
-        console.print("[red]No taste DB found.[/red] Scan your library with `taste scan` first.")
+        console.print("[red]No taste DB found.[/red] Scan your library with `taste-scan` first.")
         raise typer.Exit(code=1)
 
     try:

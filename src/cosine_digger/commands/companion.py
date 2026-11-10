@@ -30,7 +30,7 @@ def companion(
         typer.echo("Made a new pairing token. A Digger already running uses it from now on, "
                    "so devices paired before need this new link.")
     typer.echo("Run Digger for the phone with:  cosine-digger serve --companion"
-               + (f" --port {port}" if port != 8765 else ""))
+               + (f" --port {port}" if port != cfg.port else ""))
     typer.echo("(Stop a Digger you started with cosine-digger start first: cosine-digger stop.)\n")
     for line in pairing.pairing_lines("0.0.0.0", port, token):
         typer.echo(line)
@@ -38,6 +38,10 @@ def companion(
     typer.echo("Anyone with the token on your network can dig, keep and pass as you. "
                "cosine-digger companion --rotate replaces it.")
     if copy:
-        link = pairing.pairing_link(pairing.addresses("0.0.0.0", port), token, pairing.display_name())
+        urls = pairing.addresses("0.0.0.0", port)
+        if not urls:
+            typer.echo("\nNothing to copy: this computer has no network address the phone could use.")
+            return
+        link = pairing.pairing_link(urls, token, pairing.display_name())
         typer.echo("\nCopied the pairing link." if pairing.copy_to_clipboard(link)
                    else "\nCouldn't copy the link here (copying needs macOS). Copy it from above.")

@@ -16,18 +16,25 @@ def register(root: typer.Typer) -> None:
 
 
 def _run(kind: str, dry_run: bool, json_output: bool, name: str | None) -> None:
+    from ..client import CosineClientError
     from ..playlists import PlaylistError, run_playlist
 
     err = Console(stderr=True, markup=False)
     notify = None if json_output else (lambda msg: err.print(msg))
     try:
         result = run_playlist(kind, name=name, dry_run=dry_run, notify=notify, log_run=True)
-    except PlaylistError as exc:
+    except (PlaylistError, CosineClientError) as exc:  # the second: no key, a refused key, no answer
         if json_output:
             typer.echo(json.dumps({"kind": kind, "error": str(exc), "tracks": []}))
         else:
             err.print(str(exc))
         raise typer.Exit(1) from exc
+    if result.get("playlist_url"):
+        from .. import youtube
+
+        # A private playlist opens only in the account that owns it.
+        result["playlist_url"] = youtube.account_link(
+            result["playlist_url"], youtube.login_account(youtube.auth_path()))
     failed = bool(result.get("export_error")) or (
         result.get("export") is not None and not result["export"]["verified"])
     if json_output:

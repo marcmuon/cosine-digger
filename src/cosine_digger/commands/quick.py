@@ -10,6 +10,8 @@ from rich.markup import escape
 from rich.table import Table
 
 from .. import api
+from ..client import CosineClientError
+from ..fusion import SCORERS
 
 
 def register(app: typer.Typer) -> None:
@@ -24,10 +26,26 @@ def register(app: typer.Typer) -> None:
         json_output: bool = typer.Option(False, "--json", help="Print one JSON object to stdout"),
     ) -> None:
         """The fast path: a few favorites in, a playlist of unfamiliar picks out."""
+        if scorer not in SCORERS:
+            raise typer.BadParameter(f"Unknown scorer: {scorer!r}. Choose from: {', '.join(SCORERS)}",
+                                     param_hint="--scorer")
         err = Console(stderr=True, markup=False)
         notify = None if json_output else (lambda m: err.print(api.plain(m)))
-        result = api.quick(seeds, limit=limit, playlist=playlist, export_playlist=not no_export,
-                           scorer=scorer, notify=notify, deep=deep)
+        try:
+            result = api.quick(seeds, limit=limit, playlist=playlist, export_playlist=not no_export,
+                               scorer=scorer, notify=notify, deep=deep)
+        except CosineClientError as exc:  # no key, a refused key, cosine.club unreachable
+            if json_output:
+                sys.stdout.write(json.dumps({"seeds": [], "picks": [], "error": str(exc)}) + "\n")
+            else:
+                err.print(f"Error: {exc}")
+            raise typer.Exit(code=1) from None
+        if result.get("playlist_url"):
+            from .. import youtube
+
+            # A private playlist opens only in the account that owns it.
+            result["playlist_url"] = youtube.account_link(
+                result["playlist_url"], youtube.login_account(youtube.auth_path()))
         export = result.get("export")
         # A playlist that YouTube didn't fully accept is a failure too; the JSON keeps the detail.
         failed = bool(result.get("error") or result.get("export_error") or (export and not export["verified"]))

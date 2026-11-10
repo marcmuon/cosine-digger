@@ -59,7 +59,9 @@ def login_command(
         typer.echo("Reading your YouTube Music login from Chrome. If macOS asks to use "
                    "\u201cChrome Safe Storage\u201d, click Allow (not Always Allow).", err=True)
         try:
-            headers = chrome_login.youtube_headers(chrome_profile)
+            # As the app's Setup does: stay on the Google account the saved login acts as.
+            headers = chrome_login.youtube_headers(
+                chrome_profile, authuser=youtube.login_account(youtube.auth_path()))
         except chrome_login.ChromeLoginError as exc:  # our own wording, never cookie values
             typer.echo(f"fail: {exc}", err=True)
             raise typer.Exit(1) from None
