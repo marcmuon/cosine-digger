@@ -27,7 +27,7 @@ from urllib.parse import urlparse
 
 from . import api, storage
 from . import seeds as _seeds
-from .api import Pick, ResolvedSeed, _key, track_key
+from .api import Pick, _key, track_key
 from .client import CosineClient
 from .config import AppConfig, load_config
 from .fusion import RankedTrack, fuse_similar_tracks, ordered_map

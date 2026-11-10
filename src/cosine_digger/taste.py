@@ -28,8 +28,8 @@ from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
 from . import storage
-# Retain the historical schema imports for existing session callers.
-from .storage import _SCHEMA, _SESSION_SCHEMA
+# Retain the historical schema import for existing session callers.
+from .storage import _SESSION_SCHEMA  # noqa: F401
 
 
 # ---------------------------------------------------------------------------
@@ -295,7 +295,10 @@ def export_manifest(
                 if filepath.suffix.lower() not in AUDIO_EXTENSIONS:
                     continue
 
-                entry = _parse_from_filename(filepath)
+                try:
+                    entry = _parse_from_filename(filepath)
+                except OSError:
+                    continue  # a dangling link, or a file removed since the walk listed it
                 if read_tags:
                     entry = _enrich_from_id3(entry)
 
@@ -339,54 +342,61 @@ def incremental_scan(
     db_path = Path(db_path)
 
     conn = storage.connect(db_path)
-    _migrate_schema(conn)
+    try:
+        _migrate_schema(conn)
 
-    # Load known paths into a set — this is fast even for large libraries
-    known_paths = {
-        row[0] for row in conn.execute("SELECT path FROM tracks").fetchall()
-    }
+        # Load known paths into a set — this is fast even for large libraries
+        known_paths = {
+            row[0] for row in conn.execute("SELECT path FROM tracks").fetchall()
+        }
 
-    new_count = 0
-    for root, _dirs, files in os.walk(music_dir):
-        for fname in sorted(files):
-            filepath = Path(root) / fname
-            if filepath.suffix.lower() not in AUDIO_EXTENSIONS:
-                continue
+        new_count = 0
+        for root, _dirs, files in os.walk(music_dir):
+            for fname in sorted(files):
+                filepath = Path(root) / fname
+                if filepath.suffix.lower() not in AUDIO_EXTENSIONS:
+                    continue
 
-            path_str = str(filepath)
-            if path_str in known_paths:
-                continue
+                path_str = str(filepath)
+                if path_str in known_paths:
+                    continue
 
-            entry = _parse_from_filename(filepath)
-            if read_tags:
-                entry = _enrich_from_id3(entry)
+                try:
+                    entry = _parse_from_filename(filepath)
+                except OSError:
+                    # A dangling link, or a file removed since the walk listed it:
+                    # one unreadable entry must not abort the scan of everything else.
+                    continue
+                if read_tags:
+                    entry = _enrich_from_id3(entry)
 
-            conn.execute(
-                """INSERT OR REPLACE INTO tracks
-                   (path, filename, folder, size_bytes, mtime,
-                    artist, album, title, track_no, label, year, genre,
-                    duration_s, bitrate, source, title_source)
-                   VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
-                (
-                    entry.path, entry.filename, entry.folder,
-                    entry.size_bytes, entry.mtime,
-                    entry.artist, entry.album, entry.title,
-                    entry.track_no, entry.label, entry.year,
-                    entry.genre, entry.duration_s, entry.bitrate,
-                    entry.source, entry.title_source,
-                ),
-            )
-            new_count += 1
-            if on_progress:
-                on_progress(new_count)
+                conn.execute(
+                    """INSERT OR REPLACE INTO tracks
+                       (path, filename, folder, size_bytes, mtime,
+                        artist, album, title, track_no, label, year, genre,
+                        duration_s, bitrate, source, title_source)
+                       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+                    (
+                        entry.path, entry.filename, entry.folder,
+                        entry.size_bytes, entry.mtime,
+                        entry.artist, entry.album, entry.title,
+                        entry.track_no, entry.label, entry.year,
+                        entry.genre, entry.duration_s, entry.bitrate,
+                        entry.source, entry.title_source,
+                    ),
+                )
+                new_count += 1
+                if on_progress:
+                    on_progress(new_count)
 
-    if new_count > 0:
-        _compute_signals(conn)
-        conn.commit()
+        if new_count > 0:
+            _compute_signals(conn)
+            conn.commit()
 
-    total = conn.execute("SELECT COUNT(*) FROM tracks").fetchone()[0]
-    conn.close()
-    return new_count, total
+        total = conn.execute("SELECT COUNT(*) FROM tracks").fetchone()[0]
+        return new_count, total
+    finally:
+        conn.close()
 
 
 def build_taste_db(manifest_path: str | Path, db_path: str | Path) -> sqlite3.Connection:
@@ -568,7 +578,9 @@ def enrich_from_discogs(
     ).fetchall()
 
     stats = {"looked_up": 0, "found": 0, "not_found": 0, "cached": 0, "errors": 0}
-    user_agent = os.environ.get("DISCOGS_USER_AGENT", "cosine-digger-taste/0.1")
+    from .discogs import DEFAULT_USER_AGENT  # local: discogs imports this module's neighbours
+
+    user_agent = os.environ.get("DISCOGS_USER_AGENT") or DEFAULT_USER_AGENT
 
     for row in pairs:
         artist, album = row["artist"], row["album"]

@@ -14,7 +14,7 @@ from collections.abc import Callable, Iterator, MutableMapping
 from concurrent.futures import ThreadPoolExecutor
 from contextlib import ExitStack
 from dataclasses import dataclass, field
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import TYPE_CHECKING, Any
 
 import httpx
@@ -595,7 +595,7 @@ def record_dig(conn: sqlite3.Connection, seeds: list, picks: list[Pick], name: s
         record_results(conn, session_id, results, hop=hop)
     conn.execute(
         "UPDATE sessions SET total_results = ?, updated_at = ? WHERE id = ?",
-        (len(picks), time.strftime("%Y-%m-%dT%H:%M:%S%z"), session_id),
+        (len(picks), datetime.now(tz=timezone.utc).isoformat(), session_id),
     )
     conn.commit()
     return session_id
@@ -643,6 +643,7 @@ def export(picks: list[Pick], name: str, *, sink=None, conn: sqlite3.Connection 
     if not playable:
         raise YouTubeExportError("None of the picks has a YouTube Music video; the playlist was left unchanged.",
                                  changed=False)
+    sent = False
     try:
         if sink is None:
             sink = YTMusicSink(id_store=DbIdStore(conn) if conn is not None else None)
@@ -686,6 +687,7 @@ def export(picks: list[Pick], name: str, *, sink=None, conn: sqlite3.Connection 
                         if conn.in_transaction:
                             conn.rollback()
                         raise
+            sent = True
             try:
                 report = sink.replace_playlist(name, [p.track.video_id for p in playable], description=description,
                                                titles={p.track.video_id: p.track.track or p.track.name for p in playable},
@@ -711,6 +713,13 @@ def export(picks: list[Pick], name: str, *, sink=None, conn: sqlite3.Connection 
             return report
     except (YouTubeExportError, YouTubeAuthMissing, LockTimeout):
         raise
+    except sqlite3.Error as exc:
+        if sent:
+            raise YouTubeExportError(_export_error(exc)) from None
+        # Nothing reached YouTube: this is Digger's own database, not the login.
+        raise YouTubeExportError(
+            "Digger's database is busy (a scan or another run is writing to it); "
+            "the playlist was left unchanged. Try again in a minute.", changed=False) from None
     except Exception as exc:
         raise YouTubeExportError(_export_error(exc)) from None
 
