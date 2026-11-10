@@ -13,7 +13,7 @@ import httpx
 
 from .client import CosineClient
 from .config import scrub
-from .seeds import _fold, _norm_artist, resolve_album_text
+from .seeds import _fold, _norm_artist, _title_matches, resolve_album_text
 
 
 class FreshAuthError(Exception):
@@ -166,7 +166,7 @@ def resolve_candidate(
         if (
             track.id
             and _norm_artist(track.artist) == _norm_artist(artist)
-            and _fold(track.track or track.name) == _fold(title)
+            and _title_matches(title, track.track or track.name)
         ):
             return FreshFind(
                 artist, title, track_id=track.id, video_id=track.video_id,

@@ -10,6 +10,7 @@ from contextlib import contextmanager
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from http import HTTPStatus
+from importlib.metadata import PackageNotFoundError, version
 from typing import Any, Callable, ContextManager, Iterator, Literal
 from urllib.parse import urlsplit
 
@@ -40,7 +41,11 @@ def pace(backoff: float = 0.0) -> None:
     wait = slot - now
     if wait > 0:
         time.sleep(wait)
-DEFAULT_USER_AGENT = "cosine-digger/0.1.0 (+https://cosine.club)"
+try:
+    _VERSION = version("cosine-digger")
+except PackageNotFoundError:  # run from a source tree that was never installed
+    _VERSION = "0"
+DEFAULT_USER_AGENT = f"cosine-digger/{_VERSION} (+https://cosine.club)"
 
 
 class DiscogsError(Exception):

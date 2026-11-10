@@ -443,8 +443,3 @@ class CosineClient:
         payload = self._get(f"/playlists/{playlist_id}")
         return _parse(PlaylistDetailResponse, payload).data
 
-    def delete_playlist(self, playlist_id: str) -> None:
-        self._request("DELETE", f"/playlists/{playlist_id}")
-
-    def remove_track_from_playlist(self, playlist_id: str, track_id: str) -> None:
-        self._request("DELETE", f"/playlists/{playlist_id}/tracks/{track_id}")

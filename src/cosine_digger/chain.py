@@ -259,7 +259,8 @@ def extract_branches(
             for label in payload.get("labels") or []:
                 label_name = (label.get("name") or "").strip()
                 label_id = str(label.get("id", ""))
-                if label_name:
+                # "Not On Label" and the like are catalogue placeholders, not a label to follow.
+                if label_name and not discogs._placeholder_fact_name(label_name):
                     entry = label_counts[label_name.lower()]
                     entry["count"] += 1
                     if label_id:
@@ -267,11 +268,16 @@ def extract_branches(
                     entry["display_name"] = label_name
                     entry["parent_via"] = f"{track.artist} - {track.track}"
 
-            # Artists
+            # Artists (Discogs' "Lone (2)" is the artist Lone; "Various" is a placeholder)
+            main_ids: set[str] = set()
+            main_names: set[str] = set()
             for artist in payload.get("artists") or []:
-                artist_name = (artist.get("name") or "").strip()
+                artist_name = discogs._artist_name(artist)
                 artist_id = str(artist.get("id", ""))
-                if artist_name:
+                if artist_name and not discogs._placeholder_fact_name(artist_name):
+                    main_names.add(artist_name.lower())
+                    if artist_id:
+                        main_ids.add(artist_id)
                     entry = artist_counts[artist_name.lower()]
                     entry["count"] += 1
                     if artist_id:
@@ -283,9 +289,11 @@ def extract_branches(
             for extra in payload.get("extraartists") or []:
                 role = (extra.get("role") or "").lower()
                 if any(r in role for r in ("producer", "mixed by", "remix")):
-                    prod_name = (extra.get("name") or "").strip()
+                    prod_name = discogs._artist_name(extra)
                     prod_id = str(extra.get("id", ""))
-                    if prod_name:
+                    # The release's own artist is already a branch: following the same person
+                    # again as its producer repeats every call and counts as a second confirmation.
+                    if prod_name and prod_id not in main_ids and prod_name.lower() not in main_names:
                         entry = producer_counts[prod_name.lower()]
                         entry["count"] += 1
                         if prod_id:

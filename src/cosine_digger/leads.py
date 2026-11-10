@@ -212,17 +212,20 @@ def get_lead_tracks(
                sr.hop, sr.via, sr.session_id, sr.discovered_at
         FROM session_results sr
         LEFT JOIN result_events re ON re.result_id = sr.id
-        WHERE LOWER(sr.via) = ?
+        WHERE sr.via IS NOT NULL
           AND re.id IS NULL
         ORDER BY sr.score DESC, sr.discovered_at ASC
-        """,
-        (exact_pattern,),
+        """
     ).fetchall()
 
     # Deduplicate by track_id and skip tracks actioned under any lead
     seen_tracks: set[str] = set()
     results: list[dict] = []
     for r in rows:
+        # Compared here, as detect_leads does: SQLite's LOWER() folds ASCII only,
+        # so "artist: Âme" never matched its own lead in SQL.
+        if r[6].lower() != exact_pattern:
+            continue
         track_id = r[1]
         if track_id in seen_tracks or track_id in actioned_track_ids:
             continue
@@ -299,10 +302,16 @@ def mute_lead(conn: sqlite3.Connection, lead_type: str, lead_value: str) -> None
 
 def unmute_lead(conn: sqlite3.Connection, lead_type: str, lead_value: str) -> None:
     """Unmute a previously muted lead."""
-    conn.execute(
-        "DELETE FROM muted_leads WHERE lead_type = LOWER(?) AND LOWER(lead_value) = LOWER(?)",
-        (lead_type, lead_value),
-    )
+    # Names are compared in Python: SQLite's LOWER() folds ASCII only ("Âme" != "âme").
+    target = lead_value.lower()
+    matches = [
+        (row[0],)
+        for row in conn.execute(
+            "SELECT rowid, lead_value FROM muted_leads WHERE lead_type = LOWER(?)", (lead_type,)
+        ).fetchall()
+        if row[1].lower() == target
+    ]
+    conn.executemany("DELETE FROM muted_leads WHERE rowid = ?", matches)
     conn.commit()
 
 

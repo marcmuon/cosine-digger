@@ -48,11 +48,14 @@ def _quiet(_message: str) -> None:
 UNAVAILABLE_NOTE = "cosine.club didn't answer"
 
 
-def _unavailable(say: Notify, exc: CosineHTTPError) -> None:
+def _unavailable(say: Notify, exc: CosineHTTPError) -> bool:
     """Say when cosine.club itself failed (rate limit, server error), so an
-    unresolved seed never looks like "not in the index". A 404 stays quiet."""
+    unresolved seed never looks like "not in the index". A 404 stays quiet.
+    True when it said so."""
     if exc.status_code == 429 or exc.status_code >= 500:
         say(f"[yellow]{UNAVAILABLE_NOTE} ({exc.status_code}); try again in a minute[/]")
+        return True
+    return False
 
 
 def _artist_matches(expected: str, actual: str) -> bool:
@@ -329,12 +332,18 @@ def resolve_seed(
         say(f"[dim]Looking up: {seed_url}[/dim]")
         try:
             tracks = client.lookup(seed_url)
-        except CosineHTTPError:
+        except CosineHTTPError as exc:
+            if _unavailable(say, exc):
+                return []
             # Fallback: get video title via oEmbed, search cosine.club
             title = getattr(client, "youtube_title", _youtube_title)(seed_url)
             if title:
                 say(f"[dim]Video not in index, searching: {title}[/dim]")
-                results = client.search(title, limit=3)
+                try:
+                    results = client.search(title, limit=3)
+                except CosineHTTPError as search_exc:
+                    _unavailable(say, search_exc)
+                    return []
                 if results:
                     return results[:1]
             return []
@@ -364,7 +373,9 @@ def resolve_seed(
                 continue
             try:
                 results = client.search(query, limit=3)
-            except CosineHTTPError:
+            except CosineHTTPError as exc:
+                if _unavailable(say, exc):
+                    break  # cosine.club is failing: say so once, keep what resolved
                 continue
             if results:
                 for r in results:
@@ -399,7 +410,9 @@ def resolve_seed(
                 continue
             try:
                 results = client.search(query, limit=3)
-            except CosineHTTPError:
+            except CosineHTTPError as exc:
+                if _unavailable(say, exc):
+                    break  # cosine.club is failing: say so once, keep what resolved
                 continue
             if results:
                 for r in results:
@@ -421,8 +434,9 @@ def resolve_seed(
             if tracks:
                 say(f"[dim]Resolved {len(tracks)} tracks from release[/dim]")
                 return tracks[:max_per_release]
-        except CosineHTTPError:
-            pass
+        except CosineHTTPError as exc:
+            if _unavailable(say, exc):
+                return []
         # Fallback: fetch tracklist from Discogs API, search each track on cosine.club
         try:
             release_tracks = fetch_release_tracks(seed, client=discogs_client)
@@ -437,7 +451,9 @@ def resolve_seed(
         for rt in release_tracks:
             try:
                 results = client.search(rt.query, limit=3)
-            except CosineHTTPError:
+            except CosineHTTPError as exc:
+                if _unavailable(say, exc):
+                    break
                 continue
             if results:
                 # Validate artist matches to avoid garbage results from fuzzy search
