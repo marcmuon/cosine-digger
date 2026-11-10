@@ -12,7 +12,7 @@ dist/
 build/
 prompts/
 api-1.json
-GOAL.md.DS_Store
+GOAL.md
 .claude/*
 !.claude/skills/
 .codex/

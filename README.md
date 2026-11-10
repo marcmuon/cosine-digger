@@ -130,7 +130,7 @@ The **Feeds** screen shows **Digger Daily** and **Digger Weekly**: how each one'
 - **Run now** builds the playlist, writes it to YouTube Music, reads it back and checks it.
 - **Dry run** builds it without writing, so you can see the picks and why each was chosen.
 
-Digger refreshes them when you press **Run now**. To refresh them on a schedule, run `cosine-digger schedule install` in Terminal and follow what it prints; it needs your cosine.club key saved in Digger (pasting it in the browser does that). Times and sizes are in Setup under **Schedule**: by default Daily at 06:00 with 20 tracks and Weekly on Monday at 06:00 with 50; sizes run from 5 to 100. A Digger started with `cosine-digger serve` or Docker also keeps that schedule itself while it runs, and missed runs catch up once on its next start.
+Digger refreshes them when you press **Run now**. To refresh them on a schedule, run `cosine-digger schedule install` in Terminal and follow what it prints; it needs your cosine.club key saved in Digger (pasting it in the browser does that). Times and sizes are in Setup under **Schedule**: by default Daily at 06:00 with 20 tracks and Weekly on Monday at 06:00 with 50; sizes run from 5 to 100. A Digger started with `cosine-digger serve`, `cosine-digger start --scheduler` or Docker also keeps that schedule itself while it runs, and missed runs catch up once on its next start.
 
 ### What teaches it your taste
 
@@ -228,7 +228,7 @@ No LLM runs inside the product; every "why" comes from the real route a track wa
 
 ## Privacy
 
-Your digs, keeps and passes, library rows, settings and YouTube login stay on your computer (`~/.cosine-digger/`, or `COSINE_DIGGER_HOME`). The app listens on 127.0.0.1 only: `cosine-digger start` always does, and `serve` does unless you change `COSINE_DIGGER_HOST` or run `serve --companion`. Companion mode listens on your network for the iPhone and iPad app and lets another device in only with the pairing token in `~/.cosine-digger/companion_token`; a paired device can search, dig, keep, pass and mark heard, but not read or change keys, logins or settings. Network calls go to cosine.club (similarity), Discogs (labels, artists and credits), YouTube Music (your playlists) and, if you set a key, Exa (fresh releases). To play tracks, the page embeds YouTube's player, loaded from youtube.com.
+Your digs, keeps and passes, library rows, settings and YouTube login stay on your computer (`~/.cosine-digger/`, or `COSINE_DIGGER_HOME`). The app listens on 127.0.0.1 only: `cosine-digger start` always does, and `serve` does unless you change `COSINE_DIGGER_HOST` or run `serve --companion`. Companion mode listens on your network for the iPhone and iPad app and lets another device in only with the pairing token in `~/.cosine-digger/companion_token`; a paired device can search, dig, keep, pass and mark heard, send a dig to its YouTube Music playlist, and ask this computer to log in to YouTube Music from its Chrome. It can read what Setup shows (the schedule, your music and data folder paths, and the last four characters of each key) but can't change settings, read a whole key or paste a login. Network calls go to cosine.club (similarity), Discogs (labels, artists and credits), YouTube Music (your playlists) and, if you set a key, Exa (fresh releases). To play tracks, the page embeds YouTube's player, loaded from youtube.com.
 
 ## From a checkout, or with Docker
 
@@ -241,7 +241,7 @@ uv run cosine-digger start           # or `uv run cosine-digger serve --open` to
 
 `cosine-digger start` and `cosine-digger serve` read keys from a `.env` file in the folder you run them from, and from environment variables, which win over the file; [.env.example](.env.example) lists every setting. Keys from either show in Setup as read-only, with where they came from.
 
-If you ran cosine-digger serve --port N before, run cosine-digger start --port N once. Digger remembers the port. Nothing inside a start Digger runs Daily and Weekly on a clock: they refresh when you press Run now, or on a schedule with cosine-digger schedule install.
+If you ran cosine-digger serve --port N before, run cosine-digger start --port N once. Digger remembers the port. A Digger started with cosine-digger start runs Daily and Weekly on a clock only if you start it with --scheduler (it remembers that; --no-scheduler turns it off). Otherwise they refresh when you press Run now, or on a schedule with cosine-digger schedule install.
 
 Docker runs the app and the daily and weekly schedule, with data in a volume:
 

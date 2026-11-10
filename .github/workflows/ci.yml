@@ -8,6 +8,11 @@ on:
 permissions:
   contents: read
 
+# A newer push to a pull request replaces the run it supersedes; runs on main always finish.
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
 jobs:
   test:
     runs-on: ubuntu-latest

@@ -4,6 +4,7 @@
 artifacts
 docs
 tests
+ios
 .env
 .env.*
 *.db

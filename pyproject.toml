@@ -50,7 +50,8 @@ packages = ["src/cosine_digger"]
 artifacts = ["src/cosine_digger/web/static/**"]
 
 [tool.hatch.build.targets.sdist]
-exclude = ["/tests", "/docs", "/artifacts", "/.planning"]
+# The iOS app, the agent skills and the lane config are not part of the Python package.
+exclude = ["/tests", "/docs", "/artifacts", "/.planning", "/ios", "/.claude", "/.lane", "/skills-lock.json"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

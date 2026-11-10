@@ -48,8 +48,12 @@ jobs:
           test "$bootstrap_version" = "$version"
           ls dist/cosine_digger-"$version"-py3-none-any.whl dist/cosine_digger-"$version".tar.gz
       - run: sh -n scripts/start.sh
+      # Same test run as ci.yml, which is the selection proven green on this runner: the
+      # installer tests need zsh, the Chrome login tests are macOS-only (a skip fails the
+      # run under DIGGER_NO_SKIPS) and the Chrome playthrough runs locally only.
+      - run: sudo apt-get update -q && sudo apt-get install -y -q zsh
       - run: uv sync --extra dev --extra browser --frozen
-      - run: uv run pytest -q -rs
+      - run: uv run pytest -q -rs --deselect tests/test_slice_playthrough.py --ignore=tests/test_chrome_login.py
       - name: Smoke-test the wheel that gets published
         run: SMOKE_WHEEL="$(ls dist/*.whl)" sh scripts/smoke_wheel.sh
 
@@ -67,8 +71,9 @@ jobs:
           path: dist/
       - uses: pypa/gh-action-pypi-publish@release/v1
 
+  # The installer in the GitHub release installs this version from PyPI, so PyPI goes first.
   github-release:
-    needs: [build, verify]
+    needs: [build, verify, pypi]
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -85,7 +90,7 @@ jobs:
         run: gh release create "$RELEASE_TAG" scripts/start.sh dist/* --verify-tag --generate-notes
 
   image:
-    needs: verify
+    needs: [verify, pypi]
     runs-on: ubuntu-latest
     permissions:
       packages: write
