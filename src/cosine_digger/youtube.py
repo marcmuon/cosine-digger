@@ -26,6 +26,11 @@ class YouTubeAuthMissing(FileNotFoundError):
     """Browser credentials have not been configured."""
 
 
+class YouTubeLoginError(ValueError):
+    """User-facing browser-header login failure. Messages are written here,
+    never copied from pasted headers or provider exceptions."""
+
+
 class YouTubeExportError(RuntimeError):
     """An export was refused or could not be confirmed. Messages are written
     here, never copied from the provider (its errors can carry cookies).
@@ -162,8 +167,12 @@ def auth_path() -> Path:
 
 
 _HEADER_NAME = re.compile(r"^:?[A-Za-z][A-Za-z0-9-]*:?$")
-# Site-specific headers from www.youtube.com (or music.youtube.com) that conflict
-# with ytmusicapi's WEB_REMIX requests to music.youtube.com.
+_HEADER_KEY = re.compile(r"^[a-z][a-z0-9-]*$")
+_HEADER_LINE = re.compile(r"^:?[A-Za-z][A-Za-z0-9-]*:\s*\S")
+_CURL_PREFIX = re.compile(r"^curl(?:\.exe)?(?:\s|$)", re.IGNORECASE)
+_CURL_WIN_CMD = re.compile(r'^curl(?:\.exe)?\s+\^"', re.IGNORECASE)
+# Site-specific and transport headers from www.youtube.com (or music.youtube.com)
+# that conflict with ytmusicapi's WEB_REMIX requests to music.youtube.com.
 _DROP_LOGIN_HEADERS = frozenset({
     "origin",
     "x-origin",
@@ -172,7 +181,128 @@ _DROP_LOGIN_HEADERS = frozenset({
     "x-youtube-client-version",
     "x-youtube-bootstrap-logged-in",
     "x-goog-visitor-id",
+    "alt-used",
+    "host",
+    "connection",
+    "te",
+    "priority",
+    "content-length",
 })
+_ANSI_C_ESCAPES = {
+    "a": "\a", "b": "\b", "e": "\x1b", "E": "\x1b", "f": "\f", "n": "\n",
+    "r": "\r", "t": "\t", "v": "\v", "\\": "\\", "'": "'", '"': '"', "?": "?",
+}
+
+
+def _decode_ansi_c_escape(text: str, pos: int) -> tuple[str, int]:
+    """Decode one backslash escape inside POSIX ANSI-C $'...' quoting."""
+    ch = text[pos]
+    if ch in _ANSI_C_ESCAPES:
+        return _ANSI_C_ESCAPES[ch], pos + 1
+    if ch in ("x", "u", "U"):
+        limit = 2 if ch == "x" else (4 if ch == "u" else 8)
+        end = pos + 1
+        while end < len(text) and end - (pos + 1) < limit and text[end] in "0123456789abcdefABCDEF":
+            end += 1
+        digits = text[pos + 1:end]
+        if digits:
+            code = int(digits, 16)
+            if code <= 0x10FFFF:
+                return chr(code), end
+        return f"\\{ch}{digits}", end
+    if ch in "01234567":
+        end = pos
+        while end < len(text) and end - pos < 3 and text[end] in "01234567":
+            end += 1
+        return chr(int(text[pos:end], 8) & 0xFF), end
+    return f"\\{ch}", pos + 1
+
+
+def _split_curl_tokens(text: str) -> list[str]:
+    """Tokenize a browser 'Copy as cURL' command (POSIX single/double/$'...'
+    quoting, line continuations, and Windows cmd ^-escaping) without choking on
+    Firefox's $'...' ANSI-C quoting or a truncated trailing --data-raw body."""
+    if _CURL_WIN_CMD.match(text):
+        text = re.sub(r"\^[ \t]*\r?\n", " ", text)
+        text = re.sub(r"\^(.)", r"\1", text)
+
+    tokens: list[str] = []
+    buf: list[str] = []
+    in_token = False
+    i, n = 0, len(text)
+    while i < n:
+        ch = text[i]
+        if ch in " \t\r\n":
+            if in_token:
+                tokens.append("".join(buf))
+                buf = []
+                in_token = False
+            i += 1
+        elif ch == "$" and i + 1 < n and text[i + 1] == "'":
+            in_token = True
+            i += 2
+            while i < n and text[i] != "'":
+                if text[i] == "\\" and i + 1 < n:
+                    decoded, i = _decode_ansi_c_escape(text, i + 1)
+                    buf.append(decoded)
+                else:
+                    buf.append(text[i])
+                    i += 1
+            if i < n:
+                i += 1
+        elif ch == "'":
+            in_token = True
+            i += 1
+            while i < n and text[i] != "'":
+                buf.append(text[i])
+                i += 1
+            if i < n:
+                i += 1
+        elif ch == '"':
+            in_token = True
+            i += 1
+            while i < n and text[i] != '"':
+                if text[i] == "\\" and i + 1 < n:
+                    nxt = text[i + 1]
+                    if nxt == "\n":
+                        i += 2
+                    elif nxt == "\r" and i + 2 < n and text[i + 2] == "\n":
+                        i += 3
+                    elif nxt in ('"', "\\", "$", "`"):
+                        buf.append(nxt)
+                        i += 2
+                    else:
+                        buf.append("\\")
+                        buf.append(nxt)
+                        i += 2
+                else:
+                    buf.append(text[i])
+                    i += 1
+            if i < n:
+                i += 1
+        elif ch == "\\":
+            j = i + 1
+            while j < n and text[j] in " \t":
+                j += 1
+            if j < n and text[j] in "\r\n":
+                i = j + (2 if text[j:j + 2] == "\r\n" else 1)
+            elif i + 1 < n:
+                in_token = True
+                buf.append(text[i + 1])
+                i += 2
+            else:
+                i += 1
+        else:
+            in_token = True
+            buf.append(ch)
+            i += 1
+    if in_token:
+        tokens.append("".join(buf))
+    return tokens
+
+
+def _clean_header_line(line: str) -> str:
+    return re.sub(r"[\r\n]+", " ", line).strip()
 
 
 def normalize_headers(text: str) -> str:
@@ -180,45 +310,123 @@ def normalize_headers(text: str) -> str:
     shapes a browser copies: raw headers, a "Copy as cURL" command, or the
     formatted DevTools view (name and value on separate lines or tab-split)."""
     text = text.strip()
-    if text.startswith("curl "):
-        import shlex
-
-        tokens = shlex.split(text.replace("\\\r\n", " ").replace("\\\n", " "))
-        lines = []
+    if _CURL_PREFIX.match(text):
+        tokens = _split_curl_tokens(text)
+        lines: list[str] = []
         i = 0
         while i < len(tokens):
             tok = tokens[i]
             if tok in ("-H", "--header") and i + 1 < len(tokens):
-                lines.append(tokens[i + 1])
+                lines.append(_clean_header_line(tokens[i + 1]))
                 i += 2
             elif tok.startswith("--header="):
-                lines.append(tok.split("=", 1)[1])
+                lines.append(_clean_header_line(tok.split("=", 1)[1]))
+                i += 1
+            elif tok.startswith("-H") and not tok.startswith("--") and len(tok) > 2:
+                lines.append(_clean_header_line(tok[2:]))
                 i += 1
             elif tok in ("-b", "--cookie") and i + 1 < len(tokens):
-                lines.append(f"cookie: {tokens[i + 1]}")
+                lines.append(_clean_header_line(f"cookie: {tokens[i + 1]}"))
                 i += 2
             elif tok.startswith("--cookie="):
-                lines.append(f"cookie: {tok.split('=', 1)[1]}")
+                lines.append(_clean_header_line(f"cookie: {tok.split('=', 1)[1]}"))
+                i += 1
+            elif tok.startswith("-b") and not tok.startswith("--") and len(tok) > 2:
+                lines.append(_clean_header_line(f"cookie: {tok[2:]}"))
                 i += 1
             else:
                 i += 1
-        return "\n".join(lines)
+        return "\n".join(line for line in lines if line)
+
     rows = [line.strip() for line in text.splitlines() if line.strip()]
-    if sum(": " in row for row in rows) * 2 >= len(rows):
-        return "\n".join(rows)
+    if not rows:
+        return ""
+    header_like = sum(bool(_HEADER_LINE.match(row)) for row in rows)
+    if header_like and (header_like * 2 >= len(rows) or header_like >= 2):
+        lines = []
+        for row in rows:
+            if _HEADER_LINE.match(row):
+                name, value = row.split(":", 1)
+                lines.append(f"{name.strip()}: {value.strip()}")
+        return "\n".join(lines)
     lines, i = [], 0
     while i < len(rows):
         row = rows[i]
-        if "\t" in row:
+        if _HEADER_LINE.match(row):
+            name, value = row.split(":", 1)
+            lines.append(f"{name.strip()}: {value.strip()}")
+            i += 1
+        elif "\t" in row:
             name, value = row.split("\t", 1)
             lines.append(f"{name.strip().rstrip(':')}: {value.strip()}")
             i += 1
-        elif _HEADER_NAME.match(row) and i + 1 < len(rows):
+        elif _HEADER_NAME.match(row) and i + 1 < len(rows) and not _HEADER_LINE.match(rows[i + 1]):
             lines.append(f"{row.rstrip(':')}: {rows[i + 1]}")
             i += 2
         else:
             i += 1
     return "\n".join(lines)
+
+
+def _prepare_cookie(raw_cookie: str) -> tuple[str, str | None]:
+    """Ensure ytmusicapi's SimpleCookie-based ``sapisid_from_cookie()`` can
+    extract ``__Secure-3PAPISID`` from real browser cookies (including Firefox
+    ETP sessions that only send ``SAPISID`` / ``__Secure-1PAPISID`` or include
+    third-party cookies whose values trip Python's ``SimpleCookie``)."""
+    from ytmusicapi.helpers import sapisid_from_cookie
+
+    pairs: list[tuple[str, str]] = []
+    by_name: dict[str, str] = {}
+    for chunk in raw_cookie.split(";"):
+        chunk = chunk.strip()
+        if "=" not in chunk:
+            continue
+        name, value = chunk.split("=", 1)
+        name, value = name.strip(), value.strip()
+        if not name:
+            continue
+        pairs.append((name, value))
+        if value or name not in by_name:
+            by_name[name] = value
+
+    sapisid = (
+        by_name.get("__Secure-3PAPISID")
+        or by_name.get("SAPISID")
+        or by_name.get("__Secure-1PAPISID")
+    )
+    if sapisid:
+        sapisid = sapisid.strip('"')
+
+    cookie = raw_cookie
+    if sapisid and not by_name.get("__Secure-3PAPISID", "").strip('"'):
+        pairs = [(k, v) for k, v in pairs if k != "__Secure-3PAPISID"]
+        pairs.append(("__Secure-3PAPISID", sapisid))
+        cookie = "; ".join(f"{k}={v}" for k, v in pairs)
+
+    if sapisid:
+        try:
+            if sapisid_from_cookie(cookie) == sapisid:
+                return cookie, sapisid
+        except Exception:
+            pass
+        safe_pairs: list[tuple[str, str]] = []
+        for k, v in pairs:
+            if k == "__Secure-3PAPISID":
+                safe_pairs.append((k, sapisid))
+                continue
+            try:
+                if (sapisid_from_cookie(f"{k}={v}; __Secure-3PAPISID={sapisid}") == sapisid
+                        and sapisid_from_cookie(f"__Secure-3PAPISID={sapisid}; {k}={v}") == sapisid):
+                    safe_pairs.append((k, v))
+            except Exception:
+                continue
+        candidate = "; ".join(f"{k}={v}" for k, v in safe_pairs)
+        try:
+            if sapisid_from_cookie(candidate) == sapisid:
+                return candidate, sapisid
+        except Exception:
+            pass
+    return cookie, sapisid
 
 
 def _prepare_login_headers(headers_raw: str) -> str:
@@ -236,28 +444,35 @@ def _prepare_login_headers(headers_raw: str) -> str:
             continue
         name, value = line.split(":", 1)
         key = name.strip().lower()
-        if not key or key in _DROP_LOGIN_HEADERS:
+        val = value.strip()
+        if not key or not val or not _HEADER_KEY.match(key) or key in _DROP_LOGIN_HEADERS:
             continue
-        parsed[key] = value.strip()
+        if key == "cookie" and "cookie" in parsed:
+            parsed["cookie"] = f"{parsed['cookie'].rstrip('; ')}; {val.lstrip('; ')}"
+        else:
+            parsed[key] = val
     cookie = parsed.get("cookie")
     if cookie:
-        from ytmusicapi.helpers import get_authorization, sapisid_from_cookie
+        from ytmusicapi.helpers import get_authorization
 
-        try:
-            sapisid = sapisid_from_cookie(cookie)
-        except Exception:
-            sapisid = None
+        cookie, sapisid = _prepare_cookie(cookie)
+        parsed["cookie"] = cookie
+        parsed.setdefault("x-goog-authuser", "0")
         if sapisid:
-            parsed.setdefault("x-goog-authuser", "0")
             parsed.setdefault("authorization", get_authorization(f"{sapisid} https://music.youtube.com"))
     return "\n".join(f"{k}: {v}" for k, v in parsed.items())
 
 
 def login(headers_raw: str, path: str | Path) -> Path:
     """Save browser headers privately, without emitting credentials or library errors."""
-    headers_raw = _prepare_login_headers(normalize_headers(headers_raw))
-    if not headers_raw.strip():
-        raise ValueError("No browser headers supplied.")
+    normalized = normalize_headers(headers_raw)
+    if not normalized.strip():
+        raise YouTubeLoginError("No browser headers found. Copy a signed-in POST request as cURL or Request Headers.")
+    headers_raw = _prepare_login_headers(normalized)
+    if not any(line.startswith("cookie: ") for line in headers_raw.splitlines()):
+        raise YouTubeLoginError(
+            "No Cookie header found. Copy a signed-in POST request (such as browse), not an OPTIONS preflight."
+        )
     path = Path(path).expanduser()
     path.parent.mkdir(mode=0o700, parents=True, exist_ok=True)
     path.parent.chmod(0o700)

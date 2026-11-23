@@ -754,6 +754,8 @@ def create_app(cfg=None, *, scheduler=False, client_factory=None, sink_factory=N
         with settings_lock:
             try:
                 youtube.login(headers, cfg.ytmusic_auth_path)
+            except youtube.YouTubeLoginError as exc:  # our own wording, never header values
+                raise HTTPException(400, str(exc)) from None
             except Exception:
                 raise HTTPException(
                     400, f"Could not save {youtube.service_name(cfg.youtube_target)} login; check the browser headers"

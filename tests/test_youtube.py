@@ -416,6 +416,82 @@ def test_login_normalizes_normal_youtube_com_headers(tmp_path):
     assert YTMusic(str(min_path)).auth_type == AuthType.BROWSER
 
 
+def test_login_accepts_firefox_curl_ansi_c_quoting_and_cookie_quirks(tmp_path):
+    """Firefox 'Copy as cURL' uses POSIX $'...' ANSI-C quoting whenever a header
+    or --data-raw payload has an apostrophe or non-ASCII text, emits Alt-Used/TE/
+    Priority headers, and under ETP can send SAPISID without __Secure-3PAPISID."""
+    from ytmusicapi import YTMusic
+    from ytmusicapi.auth.types import AuthType
+
+    # 1. Firefox Copy as cURL with $'...' in --data-raw (escaped apostrophe & unicode)
+    #    and $'...' in -H headers, plus Alt-Used/TE/Priority and trailing space after \.
+    ff_curl = (
+        "curl 'https://www.youtube.com/youtubei/v1/browse?prettyPrint=false' \\   \n"
+        "  --compressed \\\n"
+        "  -X POST \\\n"
+        "  -H 'User-Agent: Mozilla/5.0 (Macintosh; Intel Mac OS X 10.15; rv:132.0) Firefox/132.0' \\\n"
+        "  -H 'Accept: */*' \\\n"
+        "  -H 'Origin: https://www.youtube.com' \\\n"
+        "  -H 'Alt-Used: www.youtube.com' \\\n"
+        "  -H 'Connection: keep-alive' \\\n"
+        "  -H 'TE: trailers' \\\n"
+        "  -H 'Priority: u=4' \\\n"
+        "  -H $'Referer: https://www.youtube.com/watch?v=abc&q=don\\'t' \\\n"
+        "  -H $'Cookie: FOO=\"bar baz\"; SID=fake-sid; SAPISID=fake/papisid; __Secure-1PAPISID=fake/papisid' \\\n"
+        "  --data-raw $'{\"context\":{},\"query\":\"don\\'t stop \\u2014 live\"}'"
+    )
+    path = youtube.login(ff_curl, tmp_path / "ff_curl.json")
+    saved = {k.lower(): v for k, v in json.loads(path.read_text()).items()}
+    assert saved["x-goog-authuser"] == "0"
+    assert "__Secure-3PAPISID=fake/papisid" in saved["cookie"]
+    assert "SID=fake-sid" in saved["cookie"]
+    assert "FOO=" not in saved["cookie"]
+    for dropped in ("alt-used", "connection", "te", "priority", "referer"):
+        assert dropped not in saved
+    ytm = YTMusic(str(path))
+    assert ytm.auth_type == AuthType.BROWSER and ytm.sapisid == "fake/papisid"
+
+    # 2. Firefox 'Copy Request Headers' (starts with HTTP/3 request line) and no-space colons.
+    ff_raw = (
+        "POST /youtubei/v1/browse?prettyPrint=false HTTP/3\n"
+        "Host: www.youtube.com\n"
+        "Cookie:SID=fake-sid; __Secure-3PAPISID=fake/raw\n"
+        "X-Goog-AuthUser:2\n"
+    )
+    raw_path = youtube.login(ff_raw, tmp_path / "ff_raw.json")
+    raw_saved = {k.lower(): v for k, v in json.loads(raw_path.read_text()).items()}
+    assert raw_saved["x-goog-authuser"] == "2"
+    assert YTMusic(str(raw_path)).sapisid == "fake/raw"
+
+    # 3. Multiple Cookie headers + truncated --data-raw quote still succeed.
+    multi = (
+        "curl 'https://www.youtube.com/youtubei/v1/browse' \\\n"
+        "  -H 'Cookie: SID=fake-sid' \\\n"
+        "  -H 'Cookie: __Secure-3PAPISID=fake/split' \\\n"
+        "  --data-raw '{\"truncated\": \"unclosed"
+    )
+    multi_path = youtube.login(multi, tmp_path / "multi.json")
+    assert YTMusic(str(multi_path)).sapisid == "fake/split"
+
+    # 4. Windows 'Copy as cURL (cmd)' with ^-escaping.
+    win_curl = (
+        'curl ^"https://www.youtube.com/youtubei/v1/browse^" ^\r\n'
+        '  -H ^"Cookie: SID=fake-sid; __Secure-3PAPISID=fake/win^" ^\r\n'
+        '  --data-raw ^"{}^"'
+    )
+    win_path = youtube.login(win_curl, tmp_path / "win.json")
+    assert YTMusic(str(win_path)).sapisid == "fake/win"
+
+    # 5. Copying an OPTIONS preflight (no Cookie header) gives a clear, secret-free error.
+    preflight = (
+        "curl 'https://www.youtube.com/youtubei/v1/browse' -X OPTIONS \\\n"
+        "  -H 'Access-Control-Request-Method: POST' \\\n"
+        "  -H 'Origin: https://www.youtube.com'"
+    )
+    with pytest.raises(youtube.YouTubeLoginError, match="No Cookie header found"):
+        youtube.login(preflight, tmp_path / "preflight.json")
+
+
 def test_verification_waits_for_youtube_and_accepts_its_substitutions(provider):
     """Seen live: the first re-read after writing can be empty, YouTube may
     store a song under its official-audio id, and it declines some videos."""

@@ -396,6 +396,11 @@ def test_youtube_login_never_echoes_headers(web, monkeypatch, cfg):
     response = web.post("/api/youtube/login", json={"headers": {"secret": secret}})
     assert response.status_code == 422 and secret not in response.text
 
+    monkeypatch.undo()
+    preflight = "curl 'https://www.youtube.com/youtubei/v1/browse' -X OPTIONS -H 'Origin: https://www.youtube.com'"
+    response = web.post("/api/youtube/login", json={"headers": preflight})
+    assert response.status_code == 400 and "No Cookie header found" in response.json()["error"]
+
 
 def test_login_from_chrome_saves_a_private_login_and_reports_chrome_problems(cfg, monkeypatch):
     """The route takes headers from Chrome's cookie store (a stand-in here) through the same

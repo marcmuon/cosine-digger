@@ -77,6 +77,9 @@ def login_command(
             with _hidden_stdin():
                 headers = sys.stdin.read()
         youtube.login(headers, cfg.ytmusic_auth_path)
+    except youtube.YouTubeLoginError as exc:
+        typer.echo(f"fail: {exc}", err=True)
+        raise typer.Exit(1) from None
     except Exception:
         typer.echo("fail: could not save login; check the headers and file permissions.", err=True)
         raise typer.Exit(1) from None
