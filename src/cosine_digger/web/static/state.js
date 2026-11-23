@@ -1,3 +1,5 @@
+import {youtubeTarget} from './dom.js';
+
 const terminal = (state) => ['done', 'failed', 'stopped', 'error'].includes(state);
 const copy = (value) => structuredClone(value);
 const encode = encodeURIComponent;
@@ -1401,7 +1403,8 @@ export function createStore({api, storage = globalThis.localStorage, sessionStor
       commit((draft) => { draft.ui.digExports[digId] = {job_id: result.job_id, state: 'running'}; }, ['ui.digExports']);
       legacyJob(result.job_id, (draft, update) => {
         draft.ui.digExports[digId] = {...draft.ui.digExports[digId], ...copy(update)};
-        const dig = draft.digs.byId[digId], params = {digName: dig?.name || ''};
+        const dig = draft.digs.byId[digId], yt = youtubeTarget(draft.ui.settings);
+        const params = {digName: dig?.name || '', service: yt.name, yt: yt.short};
         if (update.state === 'done') {
           // legacyJob commits copy only ui; the dig (frozen) is replaced, not edited.
           if (dig) draft.digs = {...draft.digs, byId: {...draft.digs.byId, [digId]: {...dig,

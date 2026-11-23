@@ -1,5 +1,5 @@
 import {selectors} from './state.js';
-import {formatDay, sourceName} from './dom.js';
+import {formatDay, sourceName, youtubeTarget} from './dom.js';
 
 const fields = [
   ['daily_time', 'set-daily-time'], ['daily_size', 'set-daily-size'], ['weekly_day', 'set-weekly-day'],
@@ -18,7 +18,7 @@ const keyCards = {
 const formInputs = {discogs: 'set-discogs', exa: 'set-exa', yt: 'yt-headers'};
 const checkNames = {
   cosine_token: 'cosine.club key', discogs_token: 'Discogs token', exa_api_key: 'Exa key',
-  youtube_login: 'YouTube Music login', music_dir: 'Music folder', db: 'Taste database',
+  youtube_login: 'YouTube login', music_dir: 'Music folder', db: 'Taste database',
 };
 const optional = ['discogs_token', 'exa_api_key', 'youtube_login', 'music_dir'];
 const last4 = (key) => (key.hint || '').replace(/^…/, '');
@@ -365,15 +365,21 @@ export function mountSetup(root, {store, h, text}) {
       ['connected', 'rejected', 'malformed'].includes(verdict);
   }
   function renderYouTube(setup) {
-    const youtube = setup.settings?.youtube, form = find('yt-form');
+    const youtube = setup.settings?.youtube, form = find('yt-form'), yt = youtubeTarget(setup.settings);
+    const title = find('card-youtube-title');
+    if (title) title.textContent = yt.name;
+    const desc = find('yt-desc');
+    if (desc) desc.textContent = text('S-SET-YT-DESC', {service: yt.name});
+    const hint = find('yt-chrome-hint');
+    if (hint) hint.textContent = text('S-SET-YT-CHROME-HINT', {service: yt.name});
     // "missing": the pasted headers saved no login (an empty {} isn't one).
     const refused = setup.login?.state === 'missing' && !youtube?.saved;
     const [tone, message] = busy.has('chrome') ? ['muted', text('S-SET-YT-CHROME-WAIT')] :
       busy.has('login') ? ['muted', text('S-SET-CHECKING')] : !youtube ? ['muted', ''] :
-      refused || youtube.checked === 'rejected' ? ['warn', text('S-SET-YT-REJECTED')] :
+      refused || youtube.checked === 'rejected' ? ['warn', text('S-SET-YT-REJECTED', {service: yt.name})] :
       !youtube.saved ? ['muted', text('S-SET-NOT-CONNECTED')] :
       youtube.checked === 'connected' ? ['ok', text('S-SET-CONNECTED')] :
-      youtube.checked === 'unreachable' ? ['warn', text('S-SET-YT-UNREACHABLE')] : ['muted', text('S-SET-YT-SAVED')];
+      youtube.checked === 'unreachable' ? ['warn', text('S-SET-YT-UNREACHABLE', {service: yt.name})] : ['muted', text('S-SET-YT-SAVED')];
     show('yt-state', tone, message);
     find('yt-chrome-block').hidden = !youtube?.chrome;
     find('yt-chrome').disabled = busy.has('chrome') || busy.has('login');
@@ -395,9 +401,10 @@ export function mountSetup(root, {store, h, text}) {
   }
   function renderHealth(setup) {
     const doctor = setup.doctor, settings = setup.settings, cosine = cosineState(setup);
+    const yt = youtubeTarget(settings);
     const verdicts = {discogs_token: settings?.discogs_token?.checked, exa_api_key: settings?.exa_api_key?.checked,
       youtube_login: settings?.youtube?.checked};
-    const signature = JSON.stringify([doctor, verdicts, cosine]);
+    const signature = JSON.stringify([doctor, verdicts, cosine, yt.id]);
     if (signature === healthSignature) return;
     healthSignature = signature;
     const checks = doctor?.checks || {};
@@ -411,7 +418,7 @@ export function mountSetup(root, {store, h, text}) {
     dbLine.hidden = !checks.db || checks.db.status === 'ok';
     const row = (name, state, label, info) => h('li', {className: 'check', 'data-status': state, 'data-check': name},
       h('span', {className: 'check__led', 'aria-hidden': 'true'}),
-      h('span', {className: 'check__name'}, checkNames[name] || name),
+      h('span', {className: 'check__name'}, name === 'youtube_login' ? `${yt.name} login` : checkNames[name] || name),
       h('span', {className: 'check__status'}, label),
       info ? h('span', {className: 'check__detail'}, info) : null);
     find('health-list').replaceChildren(...optional.filter((name) => checks[name]).map((name) => {

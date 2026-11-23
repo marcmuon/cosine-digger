@@ -141,21 +141,21 @@
               </section>
 
               <section class="panel card" id="card-youtube" aria-labelledby="card-youtube-title">
-                <header class="panel__bar"><h3 class="panel__title" id="card-youtube-title">YouTube Music</h3></header>
+                <header class="panel__bar"><h3 class="panel__title" id="card-youtube-title">YouTube</h3></header>
                 <div class="panel__body card__body">
-                  <p class="card__desc">Writes your Daily and Weekly playlists to YouTube Music. Playing tracks in Digger doesn't need it.</p>
+                  <p class="card__desc" id="yt-desc">Writes your Daily and Weekly playlists to YouTube. Playing tracks in Digger doesn't need it.</p>
                   <div class="card__status">
                     <p class="card__state" id="yt-state" role="status"></p>
                     <button class="btn btn--small" type="button" id="yt-connect" aria-controls="yt-form" aria-expanded="false" hidden>Connect</button>
                   </div>
                   <div class="yt__chrome" id="yt-chrome-block" hidden>
                     <button class="btn btn--go" type="button" id="yt-chrome">Log in from Chrome</button>
-                    <p class="card__hint">Reads your YouTube Music login from Chrome on this Mac, no developer tools. When macOS asks to use “Chrome Safe Storage”, click Allow (not Always Allow). Connect is the by-hand way.</p>
+                    <p class="card__hint" id="yt-chrome-hint">Reads your YouTube login from Chrome on this Mac, no developer tools. When macOS asks to use “Chrome Safe Storage”, click Allow (not Always Allow). Connect is the by-hand way.</p>
                     <div class="alert" id="yt-chrome-error" role="alert" hidden></div>
                   </div>
                   <form class="card__form" id="yt-form" autocomplete="off" hidden>
                     <ol class="howto">
-                      <li>Open <strong>music.youtube.com</strong> in your browser while signed in.</li>
+                      <li>Open <strong>music.youtube.com</strong> in your browser while signed in (Digger uses its session to write playlists to your YouTube account).</li>
                       <li>Open developer tools (<kbd>⌥⌘I</kbd> / <kbd>F12</kbd>) and go to <strong>Network</strong>.</li>
                       <li>Type <strong>browse</strong> in the filter, then click around the site until a request shows up.</li>
                       <li>Click a <strong>POST</strong> request to music.youtube.com and find its <strong>Request Headers</strong>.</li>

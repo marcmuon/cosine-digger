@@ -17,12 +17,14 @@ def register(root: typer.Typer) -> None:
 
 def _run(kind: str, dry_run: bool, json_output: bool, name: str | None) -> None:
     from ..client import CosineClientError
+    from ..config import load_config
     from ..playlists import PlaylistError, run_playlist
 
+    cfg = load_config()
     err = Console(stderr=True, markup=False)
     notify = None if json_output else (lambda msg: err.print(msg))
     try:
-        result = run_playlist(kind, name=name, dry_run=dry_run, notify=notify, log_run=True)
+        result = run_playlist(kind, cfg=cfg, name=name, dry_run=dry_run, notify=notify, log_run=True)
     except (PlaylistError, CosineClientError) as exc:  # the second: no key, a refused key, no answer
         if json_output:
             typer.echo(json.dumps({"kind": kind, "error": str(exc), "tracks": []}))
@@ -33,19 +35,21 @@ def _run(kind: str, dry_run: bool, json_output: bool, name: str | None) -> None:
         from .. import youtube
 
         # A private playlist opens only in the account that owns it.
-        result["playlist_url"] = youtube.account_link(
-            result["playlist_url"], youtube.login_account(youtube.auth_path()))
+        url = youtube.account_link(result["playlist_url"], youtube.login_account(cfg.ytmusic_auth_path))
+        result["playlist_url"] = url
+        if isinstance(result.get("export"), dict) and result["export"].get("playlist_url"):
+            result["export"]["playlist_url"] = url
     failed = bool(result.get("export_error")) or (
         result.get("export") is not None and not result["export"]["verified"])
     if json_output:
         typer.echo(json.dumps(result, ensure_ascii=False))
     else:
-        _print(result, dry_run)
+        _print(result, dry_run, target=cfg.youtube_target)
     if failed or not result["tracks"]:
         raise typer.Exit(1)
 
 
-def _print(result: dict, dry_run: bool) -> None:
+def _print(result: dict, dry_run: bool, *, target: str = "youtube") -> None:
     console = Console(markup=False)
     table = Table("#", "Track", "Why", title=f"{result['name']} · {result['date']}")
     for i, track in enumerate(result["tracks"], 1):
@@ -56,7 +60,9 @@ def _print(result: dict, dry_run: bool) -> None:
     for warning in result["warnings"]:
         console.print(f"Warning: {warning}")
     if dry_run:
-        console.print("Dry run: YouTube Music not touched.")
+        from .. import youtube
+
+        console.print(f"Dry run: {youtube.service_name(target)} not touched.")
     elif result.get("export_error"):
         console.print(f"Export failed: {result['export_error']}")
     elif result.get("export"):
@@ -68,7 +74,7 @@ def _print(result: dict, dry_run: bool) -> None:
 
 @app.command()
 def daily(
-    dry_run: bool = typer.Option(False, "--dry-run", help="Plan only; leave YouTube Music alone"),
+    dry_run: bool = typer.Option(False, "--dry-run", help="Plan only; leave YouTube alone"),
     json_output: bool = typer.Option(False, "--json", help="Print one JSON object to stdout"),
     name: str | None = typer.Option(None, "--name", help='Playlist name (default "Digger Daily")'),
 ) -> None:
@@ -78,7 +84,7 @@ def daily(
 
 @app.command()
 def weekly(
-    dry_run: bool = typer.Option(False, "--dry-run", help="Plan only; leave YouTube Music alone"),
+    dry_run: bool = typer.Option(False, "--dry-run", help="Plan only; leave YouTube alone"),
     json_output: bool = typer.Option(False, "--json", help="Print one JSON object to stdout"),
     name: str | None = typer.Option(None, "--name", help='Playlist name (default "Digger Weekly")'),
 ) -> None:

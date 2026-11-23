@@ -1,4 +1,5 @@
 import {selectors, formatRoute, selectionId} from './state.js';
+import {youtubeTarget} from './dom.js';
 
 const nameOf = pick => pick.artist ? `${pick.artist} - ${pick.title}` : pick.title;
 const normalizedName = name => name.trim().toLowerCase().replace(/\s*\(\d+\)\s*$/, '').replace(/\s+/g, ' ').trim();
@@ -184,8 +185,9 @@ export function mountInspector(root, {store, h, text, safeUrl}) {
   function track(s, step, pick) {
     const source = s.steps.byId[pick.step_id], marks = selectors.marks(s, pick.id);
     const current = s.player.current?.pickId === pick.id && s.player.state === 'playing';
-    const youtube = pick.video_id ? `https://music.youtube.com/watch?v=${encodeURIComponent(pick.video_id)}` :
-      `https://music.youtube.com/search?q=${encodeURIComponent(`${pick.artist} ${pick.title}`.trim())}`;
+    const yt = youtubeTarget(s.ui.settings);
+    const youtube = pick.video_id ? yt.watchUrl(pick.video_id) :
+      yt.searchUrl(`${pick.artist} ${pick.title}`.trim());
     const actions = h('div', {className: 'inspector-actions'},
       button('play', current ? '❚❚ Pause' : text('S-ROW-PLAY'), () => store.actions.playPick({pickId: pick.id}),
         {title: current ? '' : text('S-ROW-PLAY-TIP')}),
@@ -196,7 +198,8 @@ export function mountInspector(root, {store, h, text, safeUrl}) {
           title: text(verdict === 'keep' ? marks.kept ? 'S-ROW-KEEP-ON-TIP' : 'S-ROW-KEEP-TIP' :
             marks.passed ? 'S-ROW-PASS-ON-TIP' : 'S-ROW-PASS-TIP'),
           'aria-pressed': String(verdict === 'keep' ? marks.kept : marks.passed)})),
-      h('a', {className: 'inspector-link', href: youtube, target: '_blank'}, pick.video_id ? 'Open in YouTube Music ↗' : 'Search YouTube Music ↗'));
+      h('a', {className: 'inspector-link', href: youtube, target: '_blank'},
+        pick.video_id ? `Open in ${yt.name} ↗` : `Search ${yt.name} ↗`));
     return [title(nameOf(pick), pick.facts?.source === 'discogs' ? pick.facts.thumb : null), actions,
       pick.step_id !== step.id && h('p', {className: 'inspector-muted'}, text('S-ROW-GONE-DIVIDER', {c: step.diff.gone_picks.length, n: source.number}),
         openLink(s, source.id, source.dig_id, selectionId(pointOf(pick)), text('S-INS-ORIGIN-FROM', {p: source.number}), 'gone-source')),
@@ -263,7 +266,8 @@ export function mountInspector(root, {store, h, text, safeUrl}) {
     const next = JSON.stringify([step, point, pick, picks, picks.map(item => selectors.marks(s, item.id)),
       isOrigin && selectors.moveChoices(s, point, {sourceStepId: step.id}),
       pick && selectors.marks(s, pick.id), related, selectors.keepsForDig(s, step.dig_id).map(item => item.id),
-      s.player.current?.pickId, s.player.state, s.judgments.pending, s.ui.settings?.discogs_token?.set, s.ui.server, s.ui.route.view]);
+      s.player.current?.pickId, s.player.state, s.judgments.pending, s.ui.settings?.discogs_token?.set,
+      s.ui.settings?.youtube?.target, s.ui.server, s.ui.route.view]);
     if (next === signature) return;
     signature = next;
     const key = `${step.id}:${s.ui.route.sel || ''}`, sameSelection = selection === key;

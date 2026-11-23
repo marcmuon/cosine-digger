@@ -1,5 +1,5 @@
 import {selectors, formatRoute, youtubeLoginProblem} from './state.js';
-import {formatWhen} from './dom.js';
+import {formatWhen, youtubeTarget} from './dom.js';
 
 const nameOf = (pick) => pick.artist ? `${pick.artist} - ${pick.title}` : pick.title;
 
@@ -21,7 +21,7 @@ export function mountTrail(root, {store, h, text, safeUrl, mounts}) {
   const meta = h('p', {className: 'trail-meta'});
   // The dig as a private YouTube Music playlist: it plays on in another tab, where Digger's player pauses.
   const ytOpen = h('a', {className: 'btn btn--small btn--yt trail-yt-open', target: '_blank', hidden: true},
-    text('S-TR-YT-OPEN'));
+    text('S-TR-YT-OPEN', {yt: youtubeTarget(store.getState().ui.settings).short}));
   const ytSend = h('button', {type: 'button', className: 'btn btn--small trail-yt-send', 'data-action': 'youtube'});
   const ytStatus = h('p', {className: 'trail-yt-status', hidden: true});
   const youtube = h('div', {className: 'trail-yt'}, ytOpen, ytSend, ytStatus);
@@ -57,9 +57,10 @@ export function mountTrail(root, {store, h, text, safeUrl, mounts}) {
   function openPlaylistTab(digId) {
     const tab = window.open('', '_blank');
     if (!tab) return;
-    tab.document.title = text('S-TR-YT-TAB');
+    const yt = youtubeTarget(store.getState().ui.settings);
+    tab.document.title = text('S-TR-YT-TAB', {service: yt.name});
     tab.document.body.style.cssText = 'margin: 0; padding: 32px; background: #07080c; color: #e6e9f1; font: 16px system-ui, sans-serif;';
-    tab.document.body.textContent = text('S-TR-YT-TAB-WAIT');
+    tab.document.body.textContent = text('S-TR-YT-TAB-WAIT', {service: yt.name});
     playlistTabs.set(digId, tab);
   }
   function followPlaylistTabs(s) {
@@ -326,15 +327,17 @@ export function mountTrail(root, {store, h, text, safeUrl, mounts}) {
   }
   function renderYouTube(s, dig) {
     const sent = s.ui.digExports[dig.id], url = safeUrl(dig.youtube_playlist_url), login = youtubeLogin(s, dig.id);
+    const yt = youtubeTarget(s.ui.settings), ytParams = {service: yt.name, yt: yt.short};
     const sending = sent?.state === 'running', result = sent?.state === 'done' ? sent.result : null;
     const failure = sent?.state === 'error' ? String(sent.error || '') : null;
     // Update fits beside the status line; Send and Connect take the full width.
     youtube.dataset.layout = url && !login ? 'row' : 'stack';
     ytOpen.hidden = !url;
     if (url && ytOpen.href !== url) ytOpen.href = url;
-    ytOpen.title = text('S-TR-YT-OPEN-TIP', {digName: dig.name});
-    ytSend.textContent = text(sending ? 'S-TR-YT-SENDING' : login ? 'S-TR-YT-CONNECT' : url ? 'S-TR-YT-UPDATE' : 'S-TR-YT-SEND');
-    ytSend.title = text(login ? 'S-TR-YT-CONNECT-TIP' : url ? 'S-TR-YT-UPDATE-TIP' : 'S-TR-YT-SEND-TIP');
+    ytOpen.textContent = text('S-TR-YT-OPEN', ytParams);
+    ytOpen.title = text('S-TR-YT-OPEN-TIP', {...ytParams, digName: dig.name});
+    ytSend.textContent = text(sending ? 'S-TR-YT-SENDING' : login ? 'S-TR-YT-CONNECT' : url ? 'S-TR-YT-UPDATE' : 'S-TR-YT-SEND', ytParams);
+    ytSend.title = text(login ? 'S-TR-YT-CONNECT-TIP' : url ? 'S-TR-YT-UPDATE-TIP' : 'S-TR-YT-SEND-TIP', ytParams);
     ytSend.classList.toggle('btn--yt', !url && !login);
     ytSend.disabled = sending;
     // Steps whose picks finished after the last send read the dig, or are still arriving, aren't in
@@ -345,11 +348,11 @@ export function mountTrail(root, {store, h, text, safeUrl, mounts}) {
     const last = result ? [text('S-TR-YT-DONE', {n: result.added}),
       result.passed && text('S-TR-YT-PASSED', {p: result.passed}),
       result.no_video && text('S-TR-YT-NOVIDEO', {v: result.no_video}),
-      result.missing && text('S-TR-YT-MISSING', {m: result.missing}),
-      !result.verified && text('S-TR-YT-UNVERIFIED')] :
+      result.missing && text('S-TR-YT-MISSING', {...ytParams, m: result.missing}),
+      !result.verified && text('S-TR-YT-UNVERIFIED', ytParams)] :
       [sentAt && text('S-TR-YT-SENT-AT', {when: formatWhen(dig.youtube_sent_at)})];
     const status = sending ? [text(url ? 'S-TR-YT-UPDATING' : 'S-TR-YT-WORKING')] :
-      failure !== null ? [login ? text(login === 'rejected' ? 'S-SET-YT-REJECTED' : 'S-FEEDS-LOGIN-MISSING') : failure] :
+      failure !== null ? [login ? text(login === 'rejected' ? 'S-SET-YT-REJECTED' : 'S-FEEDS-LOGIN-MISSING', ytParams) : failure] :
       [...last, behind && text('S-TR-YT-BEHIND', {n: behind})];
     ytStatus.textContent = status.filter(Boolean).join(' · ');
     ytStatus.hidden = !ytStatus.textContent;

@@ -327,7 +327,7 @@ def test_fixture_legacy_jobs_deny_all_provider_requests(tmp_path, monkeypatch, k
     assert auth_reads == []
     assert weekly_label_hops == [True, True]
     playlist_id = "PLsliceFixture"
-    playlist_url = f"https://music.youtube.com/playlist?list={playlist_id}"
+    playlist_url = f"https://www.youtube.com/playlist?list={playlist_id}"
     for (kind, dry_run), job in feeds.items():
         assert job["state"] == "done"
         result = job["result"]
@@ -348,7 +348,9 @@ def test_fixture_legacy_jobs_deny_all_provider_requests(tmp_path, monkeypatch, k
     reply = login.json()
     # The reply carries the server's settings: a login saved in test mode has no verdict, and
     # Log in from Chrome isn't offered (tests point its Chrome folder at an empty one).
-    assert reply.pop("settings")["youtube"] == {"logged_in": True, "saved": True, "checked": None, "chrome": False}
+    assert reply.pop("settings")["youtube"] == {
+        "logged_in": True, "saved": True, "checked": None, "chrome": False, "target": "youtube",
+    }
     assert reply == {"ok": True, "logged_in": True, "state": "saved"}
 
 

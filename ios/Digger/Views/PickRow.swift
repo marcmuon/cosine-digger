@@ -309,8 +309,8 @@ struct PickActions: View {
                 Label("Details", systemImage: "info.circle")
             }
         }
-        if let url = Explain.youTubeMusicURL(pick) {
-            Link(destination: url) { Label("Open in YouTube Music", systemImage: "arrow.up.right.square") }
+        if let url = Explain.youTubeURL(pick, target: session.youtubeTarget) {
+            Link(destination: url) { Label("Open in \(session.youtubeTarget.name)", systemImage: "arrow.up.right.square") }
         }
     }
 }

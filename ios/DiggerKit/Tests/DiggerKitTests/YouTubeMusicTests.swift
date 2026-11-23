@@ -9,10 +9,10 @@ extension SessionRecoveryTests {
 
     static func json(_ object: Any) -> Data { try! JSONSerialization.data(withJSONObject: object) }
 
-    /// The recorded dig, as it reads once it was sent to YouTube Music at `sentAt`.
+    /// The recorded dig, as it reads once it was sent to YouTube at `sentAt`.
     static func sentDig(at sentAt: String) throws -> Data {
         var dig = try XCTUnwrap(JSONSerialization.jsonObject(with: fixture("dig")) as? [String: Any])
-        dig["youtube_playlist_url"] = "https://music.youtube.com/playlist?list=PLdemo&authuser=1"
+        dig["youtube_playlist_url"] = "https://www.youtube.com/playlist?list=PLdemo&authuser=1"
         dig["youtube_sent_at"] = sentAt
         return json(dig)
     }
@@ -20,12 +20,22 @@ extension SessionRecoveryTests {
     func testDecodingReadsTheYouTubeLoginThePlaylistAndWhenStepsFinished() throws {
         let settings = try decode(ServerSettings.self, "settings")
         XCTAssertEqual(settings.youtube, YouTubeStatus(loggedIn: false, saved: false, checked: nil, chrome: false))
+        // An older server sends no target field and still writes music.youtube.com playlist URLs.
+        XCTAssertEqual(settings.youtube?.resolvedTarget, .youtubeMusic)
+        XCTAssertEqual(YouTubeStatus(target: "youtube").resolvedTarget, .youtube)
+        XCTAssertEqual(YouTubeStatus(target: "youtube_music").resolvedTarget, .youtubeMusic)
+        // Login problem matching handles both current ("YouTube") and pre-upgrade ("YouTube Music") messages.
+        XCTAssertEqual(YouTubeLoginProblem(message: "YouTube login missing: run `cosine-digger youtube login`"), .missing)
+        XCTAssertEqual(YouTubeLoginProblem(message: "YouTube Music login missing: run `cosine-digger youtube login`"), .missing)
+        XCTAssertEqual(YouTubeLoginProblem(message: "YouTube says you're signed out: the saved login has expired."), .rejected)
+        XCTAssertEqual(YouTubeLoginProblem(message: "YouTube Music says you're signed out: the saved login has expired."), .rejected)
+        XCTAssertNil(YouTubeLoginProblem(message: "Network timeout"))
         let dig = try decode(Dig.self, "dig")
         XCTAssertNil(dig.youtubePlaylistURL)
         XCTAssertEqual(dig.steps.first?.picksDoneAt, "2026-10-21T20:32:05.233581+00:00")
         let job = try JSONDecoder().decode(BackgroundJob.self, from: Self.json([
             "id": Self.sendJob, "kind": "playlist", "state": "done", "error": NSNull(), "events": 3,
-            "result": ["dig_id": "d", "playlist_url": "https://music.youtube.com/playlist?list=PL1", "sent_at": "2026-10-21T20:40:00+00:00",
+            "result": ["dig_id": "d", "playlist_url": "https://www.youtube.com/playlist?list=PL1", "sent_at": "2026-10-21T20:40:00+00:00",
                        "created": true, "verified": false, "sent": 25, "added": 23, "missing": 1, "passed": 2, "no_video": 1]]))
         XCTAssertTrue(job.isFinished)
         XCTAssertEqual(job.result?.added, 23)
@@ -40,6 +50,9 @@ extension SessionRecoveryTests {
     @MainActor
     func testSendingADigFollowsItsJobToThePlaylistAndSaysWhichStepsArentInIt() async throws {
         let session = session()
+        var settings = try XCTUnwrap(JSONSerialization.jsonObject(with: fixture("settings")) as? [String: Any])
+        settings["youtube"] = ["logged_in": true, "saved": true, "checked": "connected", "chrome": true, "target": "youtube"]
+        StubDigger.rules["/api/settings"] = .init(body: Self.json(settings))
         try await session.pair(connection())
         try await waitFor { session.currentEnvelope != nil }
         let digID = StubDigger.digID
@@ -47,11 +60,8 @@ extension SessionRecoveryTests {
         StubDigger.onceRules["/api/jobs/\(Self.sendJob)"] = .init(body: Self.json(["id": Self.sendJob, "state": "running"]))
         StubDigger.rules["/api/jobs/\(Self.sendJob)"] = .init(body: Self.json([
             "id": Self.sendJob, "state": "done",
-            "result": ["playlist_url": "https://music.youtube.com/playlist?list=PLdemo&authuser=1",
+            "result": ["playlist_url": "https://www.youtube.com/playlist?list=PLdemo&authuser=1",
                        "sent_at": "2026-10-21T20:32:40+00:00", "verified": true, "added": 23, "missing": 0, "passed": 2, "no_video": 0]]))
-        var settings = try XCTUnwrap(JSONSerialization.jsonObject(with: fixture("settings")) as? [String: Any])
-        settings["youtube"] = ["logged_in": true, "saved": true, "checked": "connected", "chrome": true]
-        StubDigger.rules["/api/settings"] = .init(body: Self.json(settings))
         // Sent between the two steps' picks: the label step came after.
         StubDigger.rules["/api/digs/\(digID)"] = .init(body: try Self.sentDig(at: "2026-10-21T20:32:40+00:00"))
 
@@ -61,9 +71,10 @@ extension SessionRecoveryTests {
             return XCTFail("expected a finished send, got \(String(describing: session.youtubeSends[digID]))")
         }
         XCTAssertEqual(result.added, 23)
-        XCTAssertEqual(session.dig?.youtubePlaylistURL, "https://music.youtube.com/playlist?list=PLdemo&authuser=1",
+        XCTAssertEqual(session.dig?.youtubePlaylistURL, "https://www.youtube.com/playlist?list=PLdemo&authuser=1",
                        "the dig is read again, with its playlist")
-        XCTAssertEqual(session.notice?.link?.absoluteString, "https://music.youtube.com/playlist?list=PLdemo&authuser=1")
+        XCTAssertEqual(session.notice?.link?.absoluteString, "https://www.youtube.com/playlist?list=PLdemo&authuser=1")
+        XCTAssertEqual(session.notice?.message, "Fixture Artist A - Seed A is in YouTube: 23 tracks.")
         XCTAssertEqual(session.youtubeStepsBehind(digID: digID), 1, "the label step's picks came after the send")
         XCTAssertNil(session.youtubeLoginProblem(digID: digID))
     }
@@ -71,21 +82,24 @@ extension SessionRecoveryTests {
     @MainActor
     func testASendThatNeedsALoginAsksToConnectAndALoginFromChromeClearsIt() async throws {
         let session = session()
+        var initial = try XCTUnwrap(JSONSerialization.jsonObject(with: fixture("settings")) as? [String: Any])
+        initial["youtube"] = ["logged_in": false, "saved": false, "checked": NSNull(), "chrome": true, "target": "youtube"]
+        StubDigger.rules["/api/settings"] = .init(body: Self.json(initial))
         try await session.pair(connection())
         try await waitFor { session.currentEnvelope != nil }
         let digID = StubDigger.digID
         StubDigger.rules["/api/digs/\(digID)/export"] = .init(body: Self.json(["job_id": Self.sendJob]))
         StubDigger.rules["/api/jobs/\(Self.sendJob)"] = .init(body: Self.json([
-            "id": Self.sendJob, "state": "error", "error": "YouTube Music login missing"]))
+            "id": Self.sendJob, "state": "error", "error": "YouTube login missing"]))
 
         await session.sendToYouTubeMusic()
 
-        XCTAssertEqual(session.youtubeSends[digID], .failed("YouTube Music login missing"))
+        XCTAssertEqual(session.youtubeSends[digID], .failed("YouTube login missing"))
         XCTAssertEqual(session.youtubeLoginProblem(digID: digID), .missing)
-        XCTAssertEqual(session.notice?.message, "Connect YouTube Music to send Fixture Artist A - Seed A.")
+        XCTAssertEqual(session.notice?.message, "Connect YouTube to send Fixture Artist A - Seed A.")
 
         var settings = try XCTUnwrap(JSONSerialization.jsonObject(with: fixture("settings")) as? [String: Any])
-        settings["youtube"] = ["logged_in": true, "saved": true, "checked": "connected", "chrome": true]
+        settings["youtube"] = ["logged_in": true, "saved": true, "checked": "connected", "chrome": true, "target": "youtube"]
         StubDigger.rules["/api/youtube/login/chrome"] = .init(body: Self.json(
             ["ok": true, "logged_in": true, "state": "connected", "settings": settings]))
 
@@ -94,6 +108,7 @@ extension SessionRecoveryTests {
         XCTAssertFalse(session.youtubeLoggingIn)
         XCTAssertEqual(session.settings?.youtube?.checked, "connected")
         XCTAssertEqual(session.youtubeLoginReport?.isError, false)
+        XCTAssertEqual(session.youtubeLoginReport?.message, "Logged in from Chrome. Digger can send digs to YouTube.")
         XCTAssertNil(session.youtubeSends[digID], "the failed send can go again")
         XCTAssertNil(session.youtubeLoginProblem(digID: digID))
     }
@@ -212,8 +227,9 @@ extension SessionRecoveryTests {
         let digID = StubDigger.digID
         StubDigger.rules["/api/digs/\(digID)/export"] = .init(body: Self.json(["job_id": Self.sendJob]))
         StubDigger.rules["/api/jobs/\(Self.sendJob)"] = .init(body: Self.json([
-            "id": Self.sendJob, "state": "error", "error": "YouTube Music says you're signed out: the saved login has expired."]))
+            "id": Self.sendJob, "state": "error", "error": "YouTube says you're signed out: the saved login has expired."]))
         await session.sendToYouTubeMusic()
+        XCTAssertEqual(session.youtubeLoginProblem(digID: digID), .rejected)
         session.clearYouTubeSend(digID: digID)
         XCTAssertNil(session.youtubeSends[digID])
     }
@@ -231,5 +247,31 @@ extension SessionRecoveryTests {
         XCTAssertEqual(session.youtubeLoginReport?.isError, true)
         XCTAssertTrue(session.youtubeLoginReport?.message.contains("click Allow") == true)
         XCTAssertFalse(session.youtubeLoggingIn)
+    }
+
+    @MainActor
+    func testYouTubeMusicTargetFromSettingsSwitchesNoticesAndLinks() async throws {
+        let session = session()
+        var settings = try XCTUnwrap(JSONSerialization.jsonObject(with: fixture("settings")) as? [String: Any])
+        settings["youtube"] = ["logged_in": false, "saved": false, "checked": NSNull(), "chrome": true, "target": "youtube_music"]
+        StubDigger.rules["/api/settings"] = .init(body: Self.json(settings))
+        try await session.pair(connection())
+        try await waitFor { session.currentEnvelope != nil }
+        XCTAssertEqual(session.youtubeTarget, .youtubeMusic)
+        let digID = StubDigger.digID
+        StubDigger.rules["/api/digs/\(digID)/export"] = .init(body: Self.json(["job_id": Self.sendJob]))
+        StubDigger.rules["/api/jobs/\(Self.sendJob)"] = .init(body: Self.json([
+            "id": Self.sendJob, "state": "error", "error": "YouTube Music login missing"]))
+        await session.sendToYouTubeMusic()
+        XCTAssertEqual(session.notice?.message, "Connect YouTube Music to send Fixture Artist A - Seed A.")
+
+        XCTAssertTrue(DigSession.loginReport("connected", target: .youtube).message.contains("send digs to YouTube."))
+        XCTAssertTrue(DigSession.loginReport("connected", target: .youtubeMusic).message.contains("send digs to YouTube Music."))
+        XCTAssertTrue(DigSession.loginReport("rejected", target: .youtube).message.contains("youtube.com or music.youtube.com"))
+        XCTAssertTrue(DigSession.loginReport("rejected", target: .youtubeMusic).message.contains("Sign in at music.youtube.com"))
+        XCTAssertTrue(DigSession.loginReport("missing", target: .youtube).message.contains("Chrome isn't signed in to YouTube."))
+        XCTAssertTrue(DigSession.loginReport("missing", target: .youtubeMusic).message.contains("Chrome isn't signed in to YouTube Music."))
+        XCTAssertTrue(DigSession.loginReport("unreachable", target: .youtube).message.contains("YouTube didn't answer"))
+        XCTAssertTrue(DigSession.loginReport("unreachable", target: .youtubeMusic).message.contains("YouTube Music didn't answer"))
     }
 }

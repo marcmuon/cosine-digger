@@ -255,12 +255,12 @@ def _points(conn, values, *, parent_id=None, scope=None):
     return points
 
 
-def _with_playlist(conn, dig, account=0):
-    """A dig with its YouTube Music playlist's link (in the login's account) and when it was last sent, once it was."""
+def _with_playlist(conn, dig, account=0, target="youtube"):
+    """A dig with its YouTube playlist's link (in the login's account) and when it was last sent, once it was."""
     row = conn.execute("SELECT playlist_id, updated_at FROM sink_playlists WHERE sink = ? AND name = ?",
                        (api.DbIdStore(conn).sink, api.dig_playlist_key(dig["id"]))).fetchone()
-    url = f"https://music.youtube.com/playlist?list={row[0]}" if row else None
-    return {**dig, "youtube_playlist_url": youtube.account_link(url, account), "youtube_sent_at": row[1] if row else None}
+    url = youtube.playlist_url(row[0], target=target, account=account) if row else None
+    return {**dig, "youtube_playlist_url": url, "youtube_sent_at": row[1] if row else None}
 
 
 def _keeps(conn, parent_id, scope):
@@ -406,13 +406,18 @@ def install_slice(app, *, get_config, client_factory, redact, discogs_client_fac
 
     @app.get("/api/digs")
     def digs_read(limit: int = Query(10, ge=1, le=100)):
-        account = youtube.login_account(get_config().ytmusic_auth_path)
-        return {"digs": read(lambda conn: [_with_playlist(conn, dig, account) for dig in storage.list_digs(conn, limit=limit)])}
+        config = get_config()
+        account = youtube.login_account(config.ytmusic_auth_path)
+        return {"digs": read(lambda conn: [
+            _with_playlist(conn, dig, account, config.youtube_target)
+            for dig in storage.list_digs(conn, limit=limit)
+        ])}
 
     @app.get("/api/digs/{dig_id}")
     def dig_read(dig_id: str):
-        account = youtube.login_account(get_config().ytmusic_auth_path)
-        return read(lambda conn: _with_playlist(conn, storage.get_dig(conn, dig_id), account))
+        config = get_config()
+        account = youtube.login_account(config.ytmusic_auth_path)
+        return read(lambda conn: _with_playlist(conn, storage.get_dig(conn, dig_id), account, config.youtube_target))
 
     @app.get("/api/steps/{step_id}")
     def step_read(step_id: str):

@@ -272,12 +272,12 @@ def test_empty_login_not_connected(tmp_path, monkeypatch):
         page.locator("#yt-headers").fill(headers)
         page.locator("#yt-go").click()
         expect(card_state(page, "yt")).to_have_text(
-            "YouTube Music didn't accept this login. Copy fresh headers and log in again.")
+            "YouTube didn't accept this login. Copy fresh headers and log in again.")
         expect(row.locator(".check__status")).to_have_text("rejected")
         world.login_check = "unreachable"
         page.locator("#yt-headers").fill(headers)
         page.locator("#yt-go").click()
-        expect(card_state(page, "yt")).to_have_text("Couldn't reach YouTube Music to check the login. Try again.")
+        expect(card_state(page, "yt")).to_have_text("Couldn't reach YouTube to check the login. Try again.")
         assert world.headers_sent == [headers, headers]
         assert_no_key_left(world, secret)
 
@@ -288,7 +288,7 @@ def test_feeds_no_next_run(tmp_path, monkeypatch):
         feeds = page.request.get(world.url + "/api/playlists").json()
         assert [feed["next_run"] for feed in feeds.values()] == [None, None]  # served without the scheduler
         expect(page.locator("#feeds-lede")).to_have_text(
-            "Digger can write two private YouTube Music playlists from your keeps, your passes and your library. "
+            "Digger can write two private YouTube playlists from your keeps, your passes and your library. "
             "Looking around in a dig never changes them.")
         expect(page.locator("#feeds-how")).to_have_text(
             "Digger refreshes them when you press Run now. To refresh them on their own while Digger runs, "
@@ -298,8 +298,8 @@ def test_feeds_no_next_run(tmp_path, monkeypatch):
         expect(page.locator("#feeds-next-weekly")).to_be_hidden()
         for kind in ("daily", "weekly"):
             card = page.locator(f'[data-feed-kind="{kind}"]')
-            # No YouTube Music login yet: Connect stands where Run now was.
-            expect(card.locator('[data-slot="connect"]')).to_have_text("CONNECT YOUTUBE MUSIC", use_inner_text=True)
+            # No YouTube login yet: Connect stands where Run now was.
+            expect(card.locator('[data-slot="connect"]')).to_have_text("CONNECT YOUTUBE", use_inner_text=True)
             expect(card.locator('[data-slot="run"]')).to_be_hidden()
             expect(card.locator('[data-slot="next"]')).to_be_hidden()
             expect(card.locator('[data-slot="when"]')).to_be_hidden()

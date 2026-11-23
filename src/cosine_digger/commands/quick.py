@@ -19,8 +19,8 @@ def register(app: typer.Typer) -> None:
     def quick_cmd(
         seeds: list[str] = typer.Argument(..., help="'Artist - Track', 'Artist - Album', or URLs"),
         limit: int = typer.Option(25, "--limit", "-l", help="How many picks"),
-        playlist: str | None = typer.Option(None, "--playlist", "-p", help="YouTube Music playlist name (replaced if it exists)"),
-        no_export: bool = typer.Option(False, "--no-export", help="Skip the YouTube Music playlist"),
+        playlist: str | None = typer.Option(None, "--playlist", "-p", help="YouTube playlist name (replaced if it exists)"),
+        no_export: bool = typer.Option(False, "--no-export", help="Skip the YouTube playlist"),
         scorer: str = typer.Option("rrf", "--scorer", help="rrf, consensus or adventurous"),
         deep: bool = typer.Option(False, "--deep", help="Also follow labels and artists one hop (slower)"),
         json_output: bool = typer.Option(False, "--json", help="Print one JSON object to stdout"),
@@ -31,9 +31,12 @@ def register(app: typer.Typer) -> None:
                                      param_hint="--scorer")
         err = Console(stderr=True, markup=False)
         notify = None if json_output else (lambda m: err.print(api.plain(m)))
+        from ..config import load_config
+
+        cfg = load_config()
         try:
             result = api.quick(seeds, limit=limit, playlist=playlist, export_playlist=not no_export,
-                               scorer=scorer, notify=notify, deep=deep)
+                               scorer=scorer, notify=notify, deep=deep, cfg=cfg)
         except CosineClientError as exc:  # no key, a refused key, cosine.club unreachable
             if json_output:
                 sys.stdout.write(json.dumps({"seeds": [], "picks": [], "error": str(exc)}) + "\n")
@@ -44,8 +47,10 @@ def register(app: typer.Typer) -> None:
             from .. import youtube
 
             # A private playlist opens only in the account that owns it.
-            result["playlist_url"] = youtube.account_link(
-                result["playlist_url"], youtube.login_account(youtube.auth_path()))
+            url = youtube.account_link(result["playlist_url"], youtube.login_account(cfg.ytmusic_auth_path))
+            result["playlist_url"] = url
+            if isinstance(result.get("export"), dict) and result["export"].get("playlist_url"):
+                result["export"]["playlist_url"] = url
         export = result.get("export")
         # A playlist that YouTube didn't fully accept is a failure too; the JSON keeps the detail.
         failed = bool(result.get("error") or result.get("export_error") or (export and not export["verified"]))

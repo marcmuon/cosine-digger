@@ -23,7 +23,7 @@ final class DemoServer: URLProtocol {
     nonisolated(unsafe) private static var sendPolls = 0
     nonisolated(unsafe) private static var sentAt: String?
     private static let sendJob = "5e7d0b1c2a3f4e5d6c7b8a9f0e1d2c3b"
-    private static let playlist = "https://music.youtube.com/playlist?list=PLdiggerdemo"
+    private static let playlist = "https://www.youtube.com/playlist?list=PLdiggerdemo"
 
     static let baseURL = URL(string: "http://demo.digger.invalid:8765")!
     static let connection = Connection(urls: [baseURL], token: String(repeating: "d", count: 43), name: "Demo")
@@ -142,7 +142,8 @@ final class DemoServer: URLProtocol {
         }
         lock.lock(); let connected = youtubeConnected; lock.unlock()
         settings["youtube"] = ["logged_in": connected, "saved": connected,
-                               "checked": connected ? "connected" as Any : NSNull(), "chrome": true]
+                               "checked": connected ? "connected" as Any : NSNull(), "chrome": true,
+                               "target": YouTubeTarget.youtube.rawValue]
         return json(settings)
     }
 

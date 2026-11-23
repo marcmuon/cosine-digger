@@ -96,11 +96,14 @@ final class JourneyUITests: XCTestCase {
     func testSendingTheDigToYouTubeMusicFromItsTrail() {
         let app = launch()
         openTrail(app)
-        let send = app.buttons["Send to YouTube Music"]
+        let send = app.buttons["trail-youtube-send"]
         XCTAssertTrue(send.waitForExistence(timeout: 5))
+        XCTAssertEqual(send.label, "Send to YouTube")
         send.tap()
-        XCTAssertTrue(app.buttons["Open in YouTube Music"].waitForExistence(timeout: 10))
-        XCTAssertTrue(app.buttons["Update the YouTube Music playlist"].exists)
+        let open = app.buttons["trail-youtube-open"]
+        XCTAssertTrue(open.waitForExistence(timeout: 10))
+        XCTAssertEqual(open.label, "Open in YouTube")
+        XCTAssertEqual(send.label, "Update the YouTube playlist")
         XCTAssertTrue(app.staticTexts["35 tracks in the playlist \u{00B7} 2 passed left out \u{00B7} 1 with no video"].exists)
     }
 
@@ -108,21 +111,25 @@ final class JourneyUITests: XCTestCase {
         let app = launch()
         XCTAssertTrue(app.staticTexts[firstStep].waitForExistence(timeout: 15))
         app.buttons["Dig menu"].tap()
-        let send = app.buttons["Send to YT Music"]
+        let send = app.buttons["menu-youtube-send"]
         XCTAssertTrue(send.waitForExistence(timeout: 5))
+        XCTAssertEqual(send.label, "Send to YouTube")
         send.tap()
         // The notice says when it's done, with the playlist to open.
-        XCTAssertTrue(app.staticTexts["Fixture Artist A - Seed A is in YouTube Music: 35 tracks."].waitForExistence(timeout: 10))
+        XCTAssertTrue(app.staticTexts["Fixture Artist A - Seed A is in YouTube: 35 tracks."].waitForExistence(timeout: 10))
         app.buttons["Dig menu"].tap()
-        XCTAssertTrue(app.buttons["Open in YT Music"].waitForExistence(timeout: 5))
-        XCTAssertTrue(app.buttons["Update YT Music playlist"].exists)
+        let open = app.buttons["menu-youtube-open"]
+        XCTAssertTrue(open.waitForExistence(timeout: 5))
+        XCTAssertEqual(open.label, "Open in YouTube")
+        XCTAssertEqual(app.buttons["menu-youtube-send"].label, "Update YouTube playlist")
     }
 
     func testConnectingYouTubeMusicFromChromeOnTheMac() {
         let app = launch(["-DiggerDemoYTDisconnected"])
         openTrail(app)
-        let connect = app.buttons["Connect YouTube Music"]
+        let connect = app.buttons["trail-youtube-send"]
         XCTAssertTrue(connect.waitForExistence(timeout: 5))
+        XCTAssertEqual(connect.label, "Connect YouTube")
         connect.tap()
         let login = app.buttons["Log in from Chrome on your Mac"]
         XCTAssertTrue(login.waitForExistence(timeout: 5))
@@ -130,8 +137,10 @@ final class JourneyUITests: XCTestCase {
         // While the computer waits on macOS, the app says what to do there.
         XCTAssertTrue(app.staticTexts["Click Allow on your Mac when macOS asks to use \u{201C}Chrome Safe Storage\u{201D}."]
             .waitForExistence(timeout: 2))
-        XCTAssertTrue(app.staticTexts["Logged in from Chrome. Digger can send digs to YouTube Music."].waitForExistence(timeout: 10))
-        if !app.buttons["Send to YouTube Music"].exists { app.navigationBars.buttons.element(boundBy: 0).tap() }
-        XCTAssertTrue(app.buttons["Send to YouTube Music"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.staticTexts["Logged in from Chrome. Digger can send digs to YouTube."].waitForExistence(timeout: 10))
+        if !app.buttons["trail-youtube-send"].exists { app.navigationBars.buttons.element(boundBy: 0).tap() }
+        let send = app.buttons["trail-youtube-send"]
+        XCTAssertTrue(send.waitForExistence(timeout: 5))
+        XCTAssertEqual(send.label, "Send to YouTube")
     }
 }

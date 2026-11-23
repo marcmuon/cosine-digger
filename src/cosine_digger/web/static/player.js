@@ -1,4 +1,5 @@
 import {selectors} from './state.js';
+import {youtubeTarget} from './dom.js';
 
 const timeLabel = (seconds) => {
   const whole = Math.max(0, Math.floor(seconds || 0));
@@ -241,14 +242,14 @@ export function mountPlayer(root, {store, clock, h, text, safeUrl}) {
     note.dataset.stringId = id || '';
     note.classList.toggle('player-note-warning', ['refused', 'offline'].includes(p.state));
     const key = JSON.stringify([id, p.generation, p.queue.stepId, s.steps.byId[p.queue.stepId]?.hubs,
-      s.ui.settings?.discogs_token?.set]);
+      s.ui.settings?.discogs_token?.set, s.ui.settings?.youtube?.target]);
     if (key !== noteKey) {
       noteKey = key;
       if (['refused', 'offline'].includes(p.state) && pick) {
-        const href = safeUrl(p.current.videoId ? `https://music.youtube.com/watch?v=${encodeURIComponent(p.current.videoId)}` :
-          `https://music.youtube.com/search?q=${encodeURIComponent(name)}`);
+        const yt = youtubeTarget(s.ui.settings);
+        const href = safeUrl(p.current.videoId ? yt.watchUrl(p.current.videoId) : yt.searchUrl(name));
         actions = [h('a', {className: 'btn btn--small btn--yt', href, target: '_blank', rel: 'noopener'},
-          p.current.videoId ? 'Open in YouTube Music' : 'Search YouTube Music')];
+          p.current.videoId ? `Open in ${yt.name}` : `Search ${yt.name}`)];
       } else if (id === 'S-LCD-END') actions = endButtons(s);
       noteActions.replaceChildren(...actions);
     }

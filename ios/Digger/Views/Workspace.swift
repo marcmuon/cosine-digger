@@ -234,23 +234,28 @@ struct DigMenu: View {
                 Divider()
             }
             if let dig = session.dig {
-                // The trail's YouTube Music keys, reachable from the step too.
+                let target = session.youtubeTarget
+                // The trail's YouTube keys, reachable from the step too.
                 if session.youtubeLoginProblem(digID: dig.id) != nil {
                     Button {
                         session.clearYouTubeSend(digID: dig.id)
                         push(.connection)
-                    } label: { Label("Connect YT Music", systemImage: "music.note.list") }
+                    } label: { Label("Connect \(target.shortName)", systemImage: "music.note.list") }
+                        .accessibilityIdentifier("menu-youtube-send")
                 } else {
                     Button {
                         Task { await session.sendToYouTubeMusic() }
                     } label: {
-                        Label(session.youtubePlaylist(digID: dig.id) == nil ? "Send to YT Music" : "Update YT Music playlist",
+                        Label(session.youtubePlaylist(digID: dig.id) == nil
+                              ? "Send to \(target.shortName)" : "Update \(target.shortName) playlist",
                               systemImage: "music.note.list")
                     }
                     .disabled(session.youtubeSends[dig.id] == .sending)
+                    .accessibilityIdentifier("menu-youtube-send")
                 }
                 if let playlist = session.youtubePlaylist(digID: dig.id) {
-                    Button { openURL(playlist) } label: { Label("Open in YT Music", systemImage: "arrow.up.forward.app") }
+                    Button { openURL(playlist) } label: { Label("Open in \(target.shortName)", systemImage: "arrow.up.forward.app") }
+                        .accessibilityIdentifier("menu-youtube-open")
                 }
                 Divider()
             }

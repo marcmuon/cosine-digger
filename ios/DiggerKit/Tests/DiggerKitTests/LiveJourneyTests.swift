@@ -158,7 +158,8 @@ final class LiveJourneyTests: XCTestCase {
         XCTAssertLessThanOrEqual(sent.added + sent.missing + sent.passed + sent.noVideo, first.picks.count,
                                  "each pick at most once: sent, passed or with no video")
         let link = try XCTUnwrap(session.dig?.youtubePlaylistURL, "the dig is read again with its playlist")
-        XCTAssertTrue(link.hasPrefix("https://music.youtube.com/playlist?list="))
+        let expectedHost = session.youtubeTarget == .youtubeMusic ? "music.youtube.com" : "www.youtube.com"
+        XCTAssertTrue(link.hasPrefix("https://\(expectedHost)/playlist?list="))
         XCTAssertNotNil(session.dig?.youtubeSentAt)
         XCTAssertEqual(session.youtubeStepsBehind(digID: digID), 0)
     }

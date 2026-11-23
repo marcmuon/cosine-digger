@@ -27,6 +27,7 @@ import httpx
 
 from .. import chain, youtube
 from ..client import BASE_URL, CosineClient
+from ..config import normalize_youtube_target
 from ..httpcache import HttpCache
 from ..models import Track
 from ..slice_types import Point
@@ -95,10 +96,14 @@ class FixturePlaylistSink:
     """Replace playlists in memory without constructing an authenticated client."""
 
     playlist_id = "PLsliceFixture"
-    playlist_url = f"https://music.youtube.com/playlist?list={playlist_id}"
 
-    def __init__(self, fixtures: SliceFixtures, id_store=None):
+    def __init__(self, fixtures: SliceFixtures, id_store=None, target: str = "youtube"):
         self.fixtures, self.id_store = fixtures, id_store
+        self.target = normalize_youtube_target(target)
+
+    @property
+    def playlist_url(self) -> str:
+        return youtube.playlist_url(self.playlist_id, target=self.target)
 
     def replace_playlist(self, name, video_ids, description="", key=None, **kwargs) -> youtube.ExportReport:
         requested, skipped = youtube._dedupe(video_ids)
@@ -152,8 +157,8 @@ class SliceFixtures:
     def cosine_client(self) -> CosineClient:
         return FixtureCosineClient(httpx.MockTransport(self._cosine))
 
-    def youtube_sink(self, id_store=None) -> FixturePlaylistSink:
-        return FixturePlaylistSink(self, id_store)
+    def youtube_sink(self, id_store=None, target: str = "youtube") -> FixturePlaylistSink:
+        return FixturePlaylistSink(self, id_store, target=target)
 
     def discogs_client(self, budget: int = 100, http_cache: HttpCache | None = None,
                        token: str | None = None, *, budget_tracker: chain.BudgetTracker | None = None,

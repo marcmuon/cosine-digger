@@ -17,6 +17,7 @@ services:
       COSINE_DIGGER_YTMUSIC_AUTH: /data/ytmusic_auth.json
       COSINE_DIGGER_HOST: 0.0.0.0
       COSINE_DIGGER_PORT: "8765"
+      # COSINE_DIGGER_YOUTUBE_TARGET: youtube
       # COSINE_DIGGER_MUSIC_DIR: /music
     restart: unless-stopped
 

@@ -180,12 +180,12 @@ def test_login_preserves_unsaved_schedule(world):
     page.locator("#yt-headers").fill("fixture-browser-headers")
     page.locator("#yt-go").click()
     expect(card_state(page, "yt")).to_have_text(
-        "YouTube Music didn't accept this login. Copy fresh headers and log in again.")
+        "YouTube didn't accept this login. Copy fresh headers and log in again.")
     expect(page.locator("#yt-headers")).to_have_value("")
     world.login_state["state"] = "unreachable"
     page.locator("#yt-headers").fill("fixture-browser-headers")
     page.locator("#yt-go").click()
-    expect(card_state(page, "yt")).to_have_text("Couldn't reach YouTube Music to check the login. Try again.")
+    expect(card_state(page, "yt")).to_have_text("Couldn't reach YouTube to check the login. Try again.")
     # The headers stay for a check that got no answer, so Log in can simply run again.
     expect(page.locator("#yt-headers")).to_have_value("fixture-browser-headers")
     for field, value in values.items():

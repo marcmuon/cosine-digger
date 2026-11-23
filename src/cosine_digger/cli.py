@@ -308,15 +308,18 @@ def _youtube_export(tracks: list[Track], name: str, description: str, conn=None)
     tracks, and failures print our own words, never provider text (it can
     carry the login). Returns the report, or None when nothing was written."""
     from . import api
+    from .config import load_config
 
+    cfg = load_config()
     picks = [api.Pick(track=track, score=0.0, why="") for track in tracks]
     own = conn is None
     if own:
-        conn = api.open_db()
+        conn = api.open_db(cfg.db_path)
     try:
-        report = api.export(picks, name, conn=conn, description=description)
+        report = api.export(picks, name, conn=conn, description=description, target=cfg.youtube_target)
     except Exception as exc:
-        console.print("[red]YouTube export failed:[/]", Text(api._export_error(exc)))
+        console.print(f"[red]{_youtube_service_name(cfg.youtube_target)} export failed:[/]",
+                      Text(api._export_error(exc, target=cfg.youtube_target)))
         return None
     finally:
         if own:
@@ -324,10 +327,16 @@ def _youtube_export(tracks: list[Track], name: str, description: str, conn=None)
     state = "verified" if report.verified else "NOT verified: open it to check"
     from . import youtube as _youtube
 
-    link = _youtube.account_link(report.playlist_url, _youtube.login_account(_youtube.auth_path()))
+    link = _youtube.account_link(report.playlist_url, _youtube.login_account(cfg.ytmusic_auth_path))
     console.print(f"[green]Playlist:[/] {link}")
     console.print(f"{len(report.added)}/{len(report.requested)} tracks in the playlist · {state}")
     return report
+
+
+def _youtube_service_name(target: str) -> str:
+    from . import youtube as _youtube
+
+    return _youtube.service_name(target)
 
 
 def _finish_dig(

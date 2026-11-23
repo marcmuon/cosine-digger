@@ -170,5 +170,5 @@ def youtube_headers(profile: str | None = None, *, base: Path | None = None, aut
             return "\n".join([f"cookie: {cookie}", f"x-goog-authuser: {authuser}", f"origin: {ORIGIN}",
                               f"authorization: {get_authorization(cookies[SIGNED_IN] + ' ' + ORIGIN)}",
                               f"user-agent: {USER_AGENT}"])
-    raise ChromeLoginError("Chrome isn't signed in to YouTube Music. Sign in at music.youtube.com "
+    raise ChromeLoginError("Chrome isn't signed in to YouTube. Sign in at youtube.com or music.youtube.com "
                            "in Chrome, then try again.")

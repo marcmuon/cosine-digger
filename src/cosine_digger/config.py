@@ -14,6 +14,7 @@ from typing import Literal
 from dotenv import load_dotenv
 
 Source = Literal["default", "settings", "env", "legacy"]
+YouTubeTarget = Literal["youtube", "youtube_music"]
 ENV_VARS = {
     "home": "COSINE_DIGGER_HOME",
     "db_path": "COSINE_DIGGER_DB",
@@ -22,6 +23,7 @@ ENV_VARS = {
     "exa_api_key": "EXA_API_KEY",
     "music_dir": "COSINE_DIGGER_MUSIC_DIR",
     "ytmusic_auth_path": "COSINE_DIGGER_YTMUSIC_AUTH",
+    "youtube_target": "COSINE_DIGGER_YOUTUBE_TARGET",
     "daily_time": "COSINE_DIGGER_DAILY_TIME",
     "weekly_day": "COSINE_DIGGER_WEEKLY_DAY",
     "weekly_time": "COSINE_DIGGER_WEEKLY_TIME",
@@ -65,6 +67,7 @@ class AppConfig:
     exa_api_key: str | None = field(default=None, repr=False)
     music_dir: Path | None = None
     ytmusic_auth_path: Path = Path("~/.cosine-digger/ytmusic_auth.json")
+    youtube_target: YouTubeTarget = "youtube"
     daily_time: str = "06:00"
     weekly_day: str = "mon"
     weekly_time: str = "06:00"
@@ -78,6 +81,29 @@ class AppConfig:
 # "Mon" and "monday" mean mon; the scheduler compares against these seven.
 _DAY_NAMES = {name: name[:3] for name in ("monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday")}
 _DAY_NAMES.update({short: short for short in list(_DAY_NAMES.values())})
+
+_YOUTUBE_TARGETS: dict[str, YouTubeTarget] = {
+    "youtube": "youtube",
+    "youtube_music": "youtube_music",
+    "youtube-music": "youtube_music",
+    "ytmusic": "youtube_music",
+    "music": "youtube_music",
+}
+
+
+def normalize_youtube_target(value: str | None) -> YouTubeTarget:
+    """Normalize a configured YouTube destination ('youtube' or 'youtube_music')."""
+    if value is None:
+        return "youtube"
+    if not isinstance(value, str):
+        raise ValueError(f"youtube_target must be 'youtube' or 'youtube_music', not {value!r}")
+    cleaned = value.strip().lower()
+    if not cleaned:
+        return "youtube"
+    normalized = _YOUTUBE_TARGETS.get(cleaned)
+    if normalized is None:
+        raise ValueError(f"youtube_target must be 'youtube' or 'youtube_music', not {value!r}")
+    return normalized
 
 
 def _read_settings(home: Path) -> dict:
@@ -129,9 +155,9 @@ def load_config(environ: Mapping[str, str] | None = None) -> AppConfig:
     settings = _read_settings(settings_home)
     values = {
         "home": settings_home, "cosine_token": None, "discogs_token": None,
-        "exa_api_key": None, "music_dir": None, "daily_time": "06:00",
-        "weekly_day": "mon", "weekly_time": "06:00", "daily_size": 20,
-        "weekly_size": 50, "host": "127.0.0.1", "port": 8765,
+        "exa_api_key": None, "music_dir": None, "youtube_target": "youtube",
+        "daily_time": "06:00", "weekly_day": "mon", "weekly_time": "06:00",
+        "daily_size": 20, "weekly_size": 50, "host": "127.0.0.1", "port": 8765,
     }
     sources: dict[str, Source] = {key: "default" for key in ENV_VARS}
     for key, env_key in ENV_VARS.items():
@@ -170,6 +196,7 @@ def load_config(environ: Mapping[str, str] | None = None) -> AppConfig:
     values["weekly_day"] = _DAY_NAMES.get(day, day)
     if values["weekly_day"] not in _DAY_NAMES.values():
         raise ValueError(f"weekly_day must be one of mon, tue, wed, thu, fri, sat, sun, not {day!r}")
+    values["youtube_target"] = normalize_youtube_target(values["youtube_target"])
     return AppConfig(**values, sources=MappingProxyType(sources))
 
 

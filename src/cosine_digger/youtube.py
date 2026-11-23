@@ -1,4 +1,4 @@
-"""Browser-authenticated YouTube Music exports with explicit read-back verification."""
+"""Browser-authenticated YouTube playlist exports with explicit read-back verification."""
 from __future__ import annotations
 
 import functools
@@ -13,10 +13,13 @@ from contextlib import redirect_stderr, redirect_stdout
 from dataclasses import asdict, dataclass, field
 from io import StringIO
 from pathlib import Path
+from urllib.parse import parse_qsl, quote, urlsplit
 
 import requests
 import ytmusicapi
 from ytmusicapi import YTMusic
+
+from .config import YouTubeTarget, normalize_youtube_target
 
 
 class YouTubeAuthMissing(FileNotFoundError):
@@ -37,8 +40,15 @@ def _not_found(exc: Exception) -> bool:
     return isinstance(exc, ytmusicapi.exceptions.YTMusicServerError) and "HTTP 404" in str(exc)
 
 
-SIGNED_OUT = ("YouTube Music says you're signed out: the saved login has expired. Run "
-              "`cosine-digger youtube login` with fresh browser headers, then retry.")
+def signed_out_message(target: str | None = None) -> str:
+    """User-facing message when the saved browser login has expired or been revoked."""
+    return (f"{service_name(target)} says you're signed out: the saved login has expired. Run "
+            "`cosine-digger youtube login` with fresh browser headers, then retry.")
+
+
+def is_signed_out_message(message: str) -> bool:
+    """Whether an export error message reports an expired/revoked YouTube login."""
+    return "signed out" in message.lower()
 
 
 def signed_out(exc: Exception) -> bool:
@@ -75,7 +85,44 @@ def login_account(path: str | Path) -> int:
 
 def account_link(url: str | None, account: int) -> str | None:
     """A private playlist opens only in the account that owns it, so its link names that account."""
-    return f"{url}&authuser={account}" if url and account else url
+    if not url or not account:
+        return url
+    if any(k == "authuser" for k, _ in parse_qsl(urlsplit(url).query)):
+        return url
+    sep = "&" if "?" in url else "?"
+    return f"{url}{sep}authuser={account}"
+
+
+def service_name(target: str | None = None) -> str:
+    """Human-readable name for the configured YouTube destination."""
+    resolved = normalize_youtube_target(target)
+    return "YouTube Music" if resolved == "youtube_music" else "YouTube"
+
+
+SIGNED_OUT = signed_out_message("youtube")
+
+
+def playlist_url(playlist_id: str, *, target: str | None = None, account: int = 0) -> str:
+    """Playlist URL for the configured YouTube site, naming ``account`` when non-zero."""
+    resolved = normalize_youtube_target(target)
+    host = "music.youtube.com" if resolved == "youtube_music" else "www.youtube.com"
+    return account_link(f"https://{host}/playlist?list={quote(playlist_id, safe='')}", account)
+
+
+def watch_url(video_id: str, *, target: str | None = None) -> str:
+    """Video watch URL for the configured YouTube site."""
+    resolved = normalize_youtube_target(target)
+    host = "music.youtube.com" if resolved == "youtube_music" else "www.youtube.com"
+    return f"https://{host}/watch?v={quote(video_id, safe='')}"
+
+
+def search_url(query: str, *, target: str | None = None) -> str:
+    """Track search URL for the configured YouTube site."""
+    resolved = normalize_youtube_target(target)
+    encoded = quote(query, safe="")
+    if resolved == "youtube_music":
+        return f"https://music.youtube.com/search?q={encoded}"
+    return f"https://www.youtube.com/results?search_query={encoded}"
 
 
 def check_login(path: str | Path, *, timeout: float = 10.0) -> str:
@@ -168,7 +215,7 @@ def login(headers_raw: str, path: str | Path) -> Path:
         temporary.chmod(0o600)
         temporary.replace(path)
     except Exception:
-        raise ValueError("Could not save YouTube Music login; check the browser headers.") from None
+        raise ValueError("Could not save YouTube login; check the browser headers.") from None
     finally:
         temporary.unlink(missing_ok=True)
     return path
@@ -178,7 +225,7 @@ def _authenticated_ytm():
     path = auth_path()
     if not path.is_file():
         raise YouTubeAuthMissing(
-            f"YouTube Music auth file missing: {path}. Run cosine-digger youtube login."
+            f"YouTube auth file missing: {path}. Run cosine-digger youtube login."
         )
     return YTMusic(str(path))
 
@@ -204,7 +251,7 @@ def _create(ytm, name, description) -> str:
     # Every playlist this app makes is private.
     playlist_id = ytm.create_playlist(name, description=description, privacy_status="PRIVATE")
     if not isinstance(playlist_id, str) or not playlist_id:
-        raise RuntimeError("YouTube Music did not return a playlist ID; creation was not retried.")
+        raise RuntimeError("YouTube did not return a playlist ID; creation was not retried.")
     return playlist_id
 
 
@@ -314,11 +361,13 @@ class YTMusicSink:
     # waits (about 20 s in all) before calling a playlist unverified.
     READ_WAITS = (0, 2, 3, 4, 5, 6)
 
-    def __init__(self, ytm_factory=None, id_store: MutableMapping[str, str] | None = None, sleep=time.sleep):
+    def __init__(self, ytm_factory=None, id_store: MutableMapping[str, str] | None = None, sleep=time.sleep,
+                 target: str | None = None):
         self.ytm = (ytm_factory or _authenticated_ytm)()
         # Callers may supply a persistent mapping; the default lives with this sink.
         self.id_store = id_store if id_store is not None else {}
         self._sleep = sleep
+        self.target: YouTubeTarget = normalize_youtube_target(target)
 
     def _in_library(self, playlist_id: str) -> bool:
         """False only when a well-formed library listing lacks the playlist.
@@ -359,7 +408,7 @@ class YTMusicSink:
         requested, skipped = _dedupe(video_ids)
         if not requested:
             raise YouTubeExportError(
-                "None of the picks has a YouTube Music video; the playlist was left unchanged.",
+                "None of the picks has a YouTube video; the playlist was left unchanged.",
                 changed=False)
         key = key or name
         playlist_id = self.id_store.get(key)
@@ -372,7 +421,7 @@ class YTMusicSink:
                     raise ValueError("Invalid playlist response")
             except Exception as exc:
                 if self._signed_out(exc):
-                    raise YouTubeExportError(SIGNED_OUT, changed=False) from None
+                    raise YouTubeExportError(signed_out_message(self.target), changed=False) from None
                 # Recreate only when YouTube says the playlist is gone and the
                 # library agrees; any other failure keeps the mapping and stops,
                 # so a timeout can never leave a duplicate playlist behind.
@@ -391,7 +440,7 @@ class YTMusicSink:
                 playlist_id = _create(self.ytm, name, description)
             except Exception as exc:
                 if self._signed_out(exc):
-                    raise YouTubeExportError(SIGNED_OUT, changed=False) from None
+                    raise YouTubeExportError(signed_out_message(self.target), changed=False) from None
                 raise
             self.id_store[key] = playlist_id
 
@@ -453,7 +502,7 @@ class YTMusicSink:
             verified = (write_ok and not failed and not stray and private
                         and len(added) >= math.ceil(MIN_PRESENT_SHARE * len(requested)))
         return ExportReport(
-            playlist_id, f"https://music.youtube.com/playlist?list={playlist_id}",
+            playlist_id, playlist_url(playlist_id, target=self.target),
             created, requested, added, missing, skipped, failed, verified, substituted=substituted,
             inserted=inserted,  # new entries are on the playlist even when a later write failed
         )

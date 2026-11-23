@@ -10,8 +10,9 @@ from pathlib import Path
 import typer
 
 from cosine_digger import youtube
+from cosine_digger.config import load_config
 
-app = typer.Typer(help="Configure YouTube Music browser authentication.", pretty_exceptions_show_locals=False)
+app = typer.Typer(help="Configure YouTube browser authentication.", pretty_exceptions_show_locals=False)
 
 
 @contextmanager
@@ -53,15 +54,17 @@ def login_command(
                                               help="Chrome profile folder, such as Default or 'Profile 1'."),
 ):
     """Read browser request headers from stdin until EOF, from --file, or from Chrome."""
+    cfg = load_config()
+    service = youtube.service_name(cfg.youtube_target)
     if from_chrome:
         from .. import chrome_login
 
-        typer.echo("Reading your YouTube Music login from Chrome. If macOS asks to use "
+        typer.echo(f"Reading your {service} login from Chrome. If macOS asks to use "
                    "\u201cChrome Safe Storage\u201d, click Allow (not Always Allow).", err=True)
         try:
             # As the app's Setup does: stay on the Google account the saved login acts as.
             headers = chrome_login.youtube_headers(
-                chrome_profile, authuser=youtube.login_account(youtube.auth_path()))
+                chrome_profile, authuser=youtube.login_account(cfg.ytmusic_auth_path))
         except chrome_login.ChromeLoginError as exc:  # our own wording, never cookie values
             typer.echo(f"fail: {exc}", err=True)
             raise typer.Exit(1) from None
@@ -69,10 +72,10 @@ def login_command(
         if not from_chrome and file is not None:
             headers = file.read_text()
         elif not from_chrome:
-            typer.echo("Paste YouTube Music request headers, then send EOF (Ctrl-D).", err=True)
+            typer.echo("Paste request headers from music.youtube.com, then send EOF (Ctrl-D).", err=True)
             with _hidden_stdin():
                 headers = sys.stdin.read()
-        youtube.login(headers, youtube.auth_path())
+        youtube.login(headers, cfg.ytmusic_auth_path)
     except Exception:
         typer.echo("fail: could not save login; check the headers and file permissions.", err=True)
         raise typer.Exit(1) from None
@@ -93,7 +96,9 @@ def status_command(
     offline: bool = typer.Option(False, "--offline", help="Only check for the auth file."),
 ):
     """Check for credentials and, by default, verify access to the library."""
-    present = youtube.auth_path().is_file()
+    cfg = load_config()
+    service = youtube.service_name(cfg.youtube_target)
+    present = cfg.ytmusic_auth_path.is_file()
     verified = _live_check() if present and not offline else None
     payload = {"auth_present": present, "verified": verified, "offline": offline}
     if json_output:
@@ -103,9 +108,9 @@ def status_command(
     elif offline:
         typer.echo("ok: auth file present; live verification skipped.")
     elif verified:
-        typer.echo("ok: YouTube Music authentication verified.")
+        typer.echo(f"ok: {service} authentication verified.")
     else:
-        typer.echo("fail: YouTube Music doesn't accept the saved login (expired or signed out). "
+        typer.echo(f"fail: {service} doesn't accept the saved login (expired or signed out). "
                    "Run cosine-digger youtube login with fresh browser headers.")
     if not present or verified is False:
         raise typer.Exit(1)

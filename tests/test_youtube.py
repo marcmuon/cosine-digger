@@ -89,7 +89,51 @@ def test_create_stores_id_and_verifies_all_chunks(provider):
     assert report.missing == report.failed == report.skipped == []
     assert provider.calls[0] == ("create", "Discovery", "A dig", "PRIVATE")
     assert [(len(c[2]), c[3]) for c in provider.calls if c[0] == "add"] == [(50, False), (50, False), (23, False)]
-    assert report.to_dict()["playlist_url"] == f"https://music.youtube.com/playlist?list={report.playlist_id}"
+    assert report.to_dict()["playlist_url"] == f"https://www.youtube.com/playlist?list={report.playlist_id}"
+
+
+def test_youtube_target_urls_and_explicit_target_isolation(provider, monkeypatch, tmp_path):
+    from cosine_digger import api
+    from ytmusicapi.exceptions import YTMusicServerError
+
+    monkeypatch.setenv("COSINE_DIGGER_HOME", str(tmp_path))
+    monkeypatch.setenv("COSINE_DIGGER_NO_DOTENV", "1")
+    assert youtube.playlist_url("PL1") == "https://www.youtube.com/playlist?list=PL1"
+    assert youtube.playlist_url("PL1", account=1) == "https://www.youtube.com/playlist?list=PL1&authuser=1"
+    assert youtube.account_link("https://www.youtube.com/playlist", 1) == (
+        "https://www.youtube.com/playlist?authuser=1")
+    assert youtube.account_link("https://www.youtube.com/playlist?list=PL1&authuser=1", 1) == (
+        "https://www.youtube.com/playlist?list=PL1&authuser=1")
+    assert youtube.watch_url("abc123") == "https://www.youtube.com/watch?v=abc123"
+    assert youtube.search_url("Basic Channel BCD") == "https://www.youtube.com/results?search_query=Basic%20Channel%20BCD"
+
+    assert youtube.playlist_url("PL1", target="youtube_music") == "https://music.youtube.com/playlist?list=PL1"
+    assert youtube.watch_url("abc123", target="youtube_music") == "https://music.youtube.com/watch?v=abc123"
+    assert youtube.search_url("Basic Channel BCD", target="youtube_music") == (
+        "https://music.youtube.com/search?q=Basic%20Channel%20BCD")
+
+    # Helpers, YTMusicSink, and _export_error never read ambient env/disk config on their own:
+    # even a broken COSINE_DIGGER_YOUTUBE_TARGET never breaks URL building or error redaction.
+    monkeypatch.setenv("COSINE_DIGGER_YOUTUBE_TARGET", "invalid-target")
+    default_report = youtube.YTMusicSink(lambda: provider).replace_playlist("DefaultMode", ["v1"])
+    assert default_report.playlist_url == f"https://www.youtube.com/playlist?list={default_report.playlist_id}"
+    music_report = youtube.YTMusicSink(lambda: provider, target="youtube_music").replace_playlist("MusicMode", ["v1"])
+    assert music_report.playlist_url == f"https://music.youtube.com/playlist?list={music_report.playlist_id}"
+    assert youtube.watch_url("abc123") == "https://www.youtube.com/watch?v=abc123"
+
+    auth_err = youtube.YouTubeAuthMissing("missing")
+    signed_out_err = YTMusicServerError("Server returned HTTP 401: Cookie: SECRET")
+    generic_err = RuntimeError("Cookie: SECRET")
+    assert api._export_error(auth_err, target="youtube").startswith("YouTube login missing:")
+    assert api._export_error(auth_err, target="youtube_music").startswith("YouTube Music login missing:")
+    assert api._export_error(signed_out_err, target="youtube") == youtube.signed_out_message("youtube")
+    assert api._export_error(signed_out_err, target="youtube_music") == youtube.signed_out_message("youtube_music")
+    assert youtube.is_signed_out_message(youtube.signed_out_message("youtube"))
+    assert youtube.is_signed_out_message(youtube.signed_out_message("youtube_music"))
+    assert api._export_error(generic_err, target="youtube").startswith("YouTube export failed (RuntimeError).")
+    assert api._export_error(generic_err, target="youtube_music").startswith("YouTube Music export failed (RuntimeError).")
+    assert "SECRET" not in api._export_error(signed_out_err, target="youtube_music")
+    assert "SECRET" not in api._export_error(generic_err, target="youtube_music")
 
 
 def test_replace_removes_every_occurrence_by_set_video_id(provider):

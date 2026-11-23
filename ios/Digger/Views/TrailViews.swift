@@ -221,11 +221,13 @@ struct YouTubeMusicPanel: View {
 
     @ViewBuilder
     private func keys(sending: Bool, problem: YouTubeLoginProblem?, playlist: URL?) -> some View {
+        let target = session.youtubeTarget
         if let playlist {
-            Button { openURL(playlist) } label: { Text("\u{25B6}\u{FE0E} Open in YT Music") }
+            Button { openURL(playlist) } label: { Text("\u{25B6}\u{FE0E} Open in \(target.shortName)") }
                 .buttonStyle(.key(.youtube, size: .small))
-                .accessibilityLabel("Open in YouTube Music")
-                .accessibilityHint("Opens this dig's playlist in YouTube Music. Digger's player pauses.")
+                .accessibilityIdentifier("trail-youtube-open")
+                .accessibilityLabel("Open in \(target.name)")
+                .accessibilityHint("Opens this dig's playlist in \(target.name). Digger's player pauses.")
         }
         HStack(spacing: 6) {
             Button {
@@ -236,27 +238,29 @@ struct YouTubeMusicPanel: View {
                     Task { await session.sendToYouTubeMusic() }
                 }
             } label: {
-                Text(sending ? "Sending\u{2026}" : problem != nil ? "Connect YT Music"
-                     : playlist != nil ? "Update" : "\u{25B6}\u{FE0E} Send to YT Music")
+                Text(sending ? "Sending\u{2026}" : problem != nil ? "Connect \(target.shortName)"
+                     : playlist != nil ? "Update" : "\u{25B6}\u{FE0E} Send to \(target.shortName)")
             }
             .buttonStyle(.key(playlist == nil && problem == nil ? .youtube : .normal, size: .small))
             .disabled(sending)
-            .accessibilityLabel(problem != nil ? "Connect YouTube Music" : playlist != nil
-                                ? "Update the YouTube Music playlist" : "Send to YouTube Music")
-            .accessibilityHint(problem != nil ? "Shows how the computer can log in to YouTube Music."
+            .accessibilityIdentifier("trail-youtube-send")
+            .accessibilityLabel(problem != nil ? "Connect \(target.name)" : playlist != nil
+                                ? "Update the \(target.name) playlist" : "Send to \(target.name)")
+            .accessibilityHint(problem != nil ? "Shows how the computer can log in to \(target.name)."
                                : playlist != nil ? "Its tracks become this dig as it is now."
-                               : "Makes a private YouTube Music playlist of this dig: every step's tracks in order, passes left out.")
+                               : "Makes a private \(target.name) playlist of this dig: every step's tracks in order, passes left out.")
             if sending { ProgressView().tint(Theme.lcd) }
         }
     }
 
     /// What the last send did, else when the dig was last sent, and which steps aren't in it yet.
     private func status(send: YouTubeSend?, problem: YouTubeLoginProblem?, sent: Bool) -> (text: String, color: Color)? {
+        let service = session.youtubeTarget.name
         if send == .sending {
             return (sent ? "Updating the playlist\u{2026}" : "Making a private playlist of this dig\u{2026}", Theme.muted)
         }
         if let problem {
-            return (problem == .rejected ? "YouTube Music signed Digger out." : "YouTube Music isn't connected.", Theme.amber)
+            return (problem == .rejected ? "\(service) signed Digger out." : "\(service) isn't connected.", Theme.amber)
         }
         if case .failed(let message)? = send { return (message, Theme.red) }
         var parts: [String] = []
@@ -265,9 +269,9 @@ struct YouTubeMusicPanel: View {
             parts.append(result.added == 1 ? "1 track in the playlist" : "\(result.added) tracks in the playlist")
             if result.passed > 0 { parts.append("\(result.passed) passed left out") }
             if result.noVideo > 0 { parts.append("\(result.noVideo) with no video") }
-            if result.missing > 0 { parts.append("\(result.missing) YouTube Music didn't take") }
+            if result.missing > 0 { parts.append("\(result.missing) \(service) didn't take") }
             if !result.verified {
-                parts.append("YouTube Music hasn't shown every track yet. Open it to check.")
+                parts.append("\(service) hasn't shown every track yet. Open it to check.")
                 warn = true
             }
         } else if let sentAt = dig.youtubeSentAt.flatMap(DigSession.date) {

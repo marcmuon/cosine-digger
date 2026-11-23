@@ -124,17 +124,17 @@ def claim(
         raise
 
 
-def _safe_detail(exc: Exception) -> str:
+def _safe_detail(exc: Exception, *, target: str | None = None) -> str:
     """What a failed run may store and log: our own messages, else the type only."""
     from .api import scrub
     from .locks import LockTimeout
     from .playlists import PlaylistError
-    from .youtube import YouTubeAuthMissing, YouTubeExportError
+    from .youtube import YouTubeAuthMissing, YouTubeExportError, service_name
 
     if isinstance(exc, (PlaylistError, YouTubeExportError, LockTimeout)):
         return scrub(str(exc))[:500]
     if isinstance(exc, YouTubeAuthMissing):
-        return "YouTube Music login missing: run `cosine-digger youtube login`"
+        return f"{service_name(target)} login missing: run `cosine-digger youtube login`"
     return f"{type(exc).__name__} (details hidden: they can contain credentials)"
 
 
@@ -163,7 +163,7 @@ def run_due(
         try:
             detail = runner(job, scheduled_for)
         except Exception as exc:
-            status, detail = "error", _safe_detail(exc)
+            status, detail = "error", _safe_detail(exc, target=cfg.youtube_target)
             # No traceback: provider exceptions (and their causes) can quote credentials.
             logger.error("Scheduled job %s failed (run %s): %s", job, run_id, detail)
         else:

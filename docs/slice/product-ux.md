@@ -1233,10 +1233,12 @@ Label moves always read "sounds like" (D1). The phrase "released on" never appea
 
 ### 8.11 Feeds, Setup, About
 
+`{service}` is `YouTube` by default and `YouTube Music` when `COSINE_DIGGER_YOUTUBE_TARGET=youtube_music` (`{yt}` is `YouTube` / `YT Music`).
+
 | Id | Text |
 |---|---|
 | S-FEEDS-TITLE | Feeds |
-| S-FEEDS-LEDE | Digger writes two private YouTube Music playlists from your keeps, your passes and your library, and refreshes them on schedule. Looking around in a dig never changes them. Nothing you own or were already served, ever. |
+| S-FEEDS-LEDE | Digger writes two private {service} playlists from your keeps, your passes and your library, and refreshes them on schedule. Looking around in a dig never changes them. Nothing you own or were already served, ever. |
 | S-FEEDS-CLOCK | LOCAL TIME {HH:MM} |
 | S-FEEDS-NEXT-DAILY | NEXT DAILY {DDD HH:MM} |
 | S-FEEDS-NEXT-WEEKLY | NEXT WEEKLY {DDD HH:MM} |

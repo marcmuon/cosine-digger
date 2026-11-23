@@ -120,11 +120,12 @@ struct ConnectionView: View {
     /// read and kept there, and only the login's state comes here.
     private var youtubeDeck: some View {
         let youtube = session.settings?.youtube
+        let service = session.youtubeTarget.name
         let connected = youtube?.saved == true && youtube?.checked == "connected"
-        return Deck(title: "YouTube Music", status: connected ? "connected" : nil) {
+        return Deck(title: service, status: connected ? "connected" : nil) {
             HStack(spacing: 8) {
                 LED(on: youtube?.saved == true && youtube?.checked != "rejected", color: youtubeColor(youtube))
-                fact("Login", youtubeStatus(youtube))
+                fact("Login", youtubeStatus(youtube, service: service))
             }
             if let youtube, youtube.saved == true, youtube.checked != "rejected" {
                 // Logging in again from here would replace a login that works; that stays in Setup.
@@ -148,15 +149,15 @@ struct ConnectionView: View {
                             .fixedSize(horizontal: false, vertical: true)
                     }
                 }
-                Text("Digger on your Mac reads YouTube Music's sign-in from Chrome there and keeps it there. The login never comes to this device.")
+                Text("Digger on your Mac reads \(service)'s sign-in from Chrome there and keeps it there. The login never comes to this device.")
                     .font(.footnote)
                     .foregroundStyle(Theme.muted)
             } else if youtube != nil {
-                Text("Connect YouTube Music in Digger's Setup on your computer: log in from Chrome, or paste request headers there.")
+                Text("Connect \(service) in Digger's Setup on your computer: log in from Chrome, or paste request headers there.")
                     .font(.footnote)
                     .foregroundStyle(Theme.muted)
             } else {
-                Text("This Digger doesn't say how YouTube Music is connected. Update Digger on your computer to send digs from here.")
+                Text("This Digger doesn't say how \(service) is connected. Update Digger on your computer to send digs from here.")
                     .font(.footnote)
                     .foregroundStyle(Theme.muted)
             }
@@ -168,13 +169,13 @@ struct ConnectionView: View {
         }
     }
 
-    private func youtubeStatus(_ youtube: YouTubeStatus?) -> String {
+    private func youtubeStatus(_ youtube: YouTubeStatus?, service: String) -> String {
         guard let youtube else { return "Unknown" }
         guard youtube.saved == true else { return "Not connected" }
         switch youtube.checked {
         case "connected": return "Connected"
         case "rejected": return "Signed out"
-        case "unreachable": return "Saved; YouTube Music didn't answer its check"
+        case "unreachable": return "Saved; \(service) didn't answer its check"
         default: return "Saved, not checked yet"
         }
     }

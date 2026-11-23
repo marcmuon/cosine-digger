@@ -159,14 +159,16 @@ class Pick:
     via: str = ""
     hop: int = 0
 
-    def to_dict(self) -> dict[str, Any]:
+    def to_dict(self, *, youtube_target: str | None = None) -> dict[str, Any]:
+        from .youtube import watch_url
+
         t = self.track
         return {
             "id": t.id,
             "artist": t.artist,
             "title": t.track or t.name,
             "video_id": t.video_id,
-            "youtube_url": f"https://music.youtube.com/watch?v={t.video_id}" if t.video_id else None,
+            "youtube_url": watch_url(t.video_id, target=youtube_target) if t.video_id else None,
             "discogs_url": t.external_link,
             "score": round(self.score, 4),
             "why": self.why,
@@ -609,7 +611,8 @@ def record_dig(conn: sqlite3.Connection, seeds: list, picks: list[Pick], name: s
 def export(picks: list[Pick], name: str, *, sink=None, conn: sqlite3.Connection | None = None,
            description: str = "Made by cosine-digger", drop_served: bool = False,
            recheck: Callable[[list[Pick]], list[Pick]] | None = None,
-           key: str | None = None, record_served: bool = True):
+           key: str | None = None, record_served: bool = True,
+           target: str | None = None):
     """Replace the named private YouTube Music playlist with these picks.
 
     With ``conn``, the picks go into the served ledger before the write, so no
@@ -635,18 +638,19 @@ def export(picks: list[Pick], name: str, *, sink=None, conn: sqlite3.Connection 
         own = open_db()
         try:
             return export(picks, name, conn=own, description=description,
-                          drop_served=drop_served, recheck=recheck, key=key, record_served=record_served)
+                          drop_served=drop_served, recheck=recheck, key=key, record_served=record_served,
+                          target=target)
         finally:
             own.close()
     playable = [p for p in picks if p.track.video_id]
     omitted = [p.track.id for p in picks if not p.track.video_id]
     if not playable:
-        raise YouTubeExportError("None of the picks has a YouTube Music video; the playlist was left unchanged.",
+        raise YouTubeExportError("None of the picks has a YouTube video; the playlist was left unchanged.",
                                  changed=False)
     sent = False
     try:
         if sink is None:
-            sink = YTMusicSink(id_store=DbIdStore(conn) if conn is not None else None)
+            sink = YTMusicSink(id_store=DbIdStore(conn) if conn is not None else None, target=target)
         db_file = _db_file(conn)
         home = db_file.parent if db_file else None
         # One writer per playlist name across threads and processes sharing
@@ -715,13 +719,19 @@ def export(picks: list[Pick], name: str, *, sink=None, conn: sqlite3.Connection 
         raise
     except sqlite3.Error as exc:
         if sent:
-            raise YouTubeExportError(_export_error(exc)) from None
+            raise YouTubeExportError(_export_error(exc, target=_sink_target(sink, target))) from None
         # Nothing reached YouTube: this is Digger's own database, not the login.
         raise YouTubeExportError(
             "Digger's database is busy (a scan or another run is writing to it); "
             "the playlist was left unchanged. Try again in a minute.", changed=False) from None
     except Exception as exc:
-        raise YouTubeExportError(_export_error(exc)) from None
+        raise YouTubeExportError(_export_error(exc, target=_sink_target(sink, target))) from None
+
+
+def _sink_target(sink, fallback: str | None) -> str | None:
+    """Read a sink's configured target if it carries one as a string (ignoring proxy __getattr__)."""
+    value = getattr(sink, "target", None)
+    return value if isinstance(value, str) else fallback
 
 
 def dig_playlist_key(dig_id: str) -> str:
@@ -729,7 +739,7 @@ def dig_playlist_key(dig_id: str) -> str:
     return f"dig:{dig_id}"
 
 
-def export_dig(conn: sqlite3.Connection, dig_id: str, *, sink=None) -> dict[str, Any]:
+def export_dig(conn: sqlite3.Connection, dig_id: str, *, sink=None, target: str | None = None) -> dict[str, Any]:
     """Replace the dig's own private YouTube Music playlist with the dig as it
     stands, to listen outside Digger (its player pauses in a hidden tab).
 
@@ -752,6 +762,7 @@ def export_dig(conn: sqlite3.Connection, dig_id: str, *, sink=None) -> dict[str,
                         video_id=t["video_id"]), t["score"], "From your dig") for t in queue["tracks"]]
     key = dig_playlist_key(dig_id)
     report = export(picks, f"Digger: {name} · {day}", sink=sink, conn=conn, key=key, record_served=False,
+                    target=target,
                     description=f"Your Digger dig “{name}”, started {day}: every step's picks in order, each "
                                 "track once, passes left out. Send it again from Digger to bring it up to date.")
     # The mapping's updated_at says when the sent dig was read, so Digger can tell which steps
@@ -762,19 +773,20 @@ def export_dig(conn: sqlite3.Connection, dig_id: str, *, sink=None) -> dict[str,
             "missing": len(report.missing), "passed": queue["passed"], "no_video": len(report.omitted)}
 
 
-def _export_error(exc: Exception) -> str:
+def _export_error(exc: Exception, *, target: str | None = None) -> str:
     """A message that is safe to show: our own wording, never provider text
     (YouTube errors can contain the login cookies)."""
     from .locks import LockTimeout
-    from .youtube import SIGNED_OUT, YouTubeAuthMissing, YouTubeExportError, signed_out
+    from .youtube import YouTubeAuthMissing, YouTubeExportError, service_name, signed_out, signed_out_message
 
-    if isinstance(exc, YouTubeAuthMissing):
-        return "YouTube Music login missing: run `cosine-digger youtube login`"
     if isinstance(exc, (YouTubeExportError, LockTimeout)):
         return str(exc)
+    service = service_name(target)
+    if isinstance(exc, YouTubeAuthMissing):
+        return f"{service} login missing: run `cosine-digger youtube login`"
     if signed_out(exc):
-        return SIGNED_OUT
-    return (f"YouTube Music export failed ({type(exc).__name__}). Details are hidden because they can "
+        return signed_out_message(target)
+    return (f"{service} export failed ({type(exc).__name__}). Details are hidden because they can "
             "contain your login; run `cosine-digger youtube status` to check it, then retry.")
 
 
@@ -844,6 +856,7 @@ def quick(
     on_progress: Callable[[str, dict], None] | None = None,
     fallback_artists: list[str] | None = None,
     profile=None,
+    cfg=None,
 ) -> dict[str, Any]:
     """Seeds in, explained picks (and optionally a YouTube Music playlist) out.
 
@@ -864,12 +877,13 @@ def quick(
     from .chain import make_rate_limited_client
     from .config import load_config
 
+    cfg = cfg or load_config()
     with ExitStack() as resources:
         if client is None:
             client = make_client()
             resources.callback(client.close)
         if conn is None and (record or export_playlist):
-            conn = open_db()
+            conn = open_db(cfg.db_path)
             resources.callback(conn.close)
         # One paced, cached Discogs client for seed lookups (album text, release,
         # label and artist URLs); a deep dig shares the same response cache.
@@ -877,7 +891,7 @@ def quick(
         if cache is not None:
             resources.callback(cache.close)
         discogs_client, _ = make_rate_limited_client(budget=10_000, http_cache=cache,
-                                                    token=load_config().discogs_token)
+                                                    token=cfg.discogs_token)
         resources.callback(discogs_client.close)
         seeds = resolve_seeds(raw_seeds, client, notify=notify, discogs_client=discogs_client)
         if fallback_artists:
@@ -920,7 +934,7 @@ def quick(
                         exclusions=exclusions, excluded=excluded)
         timings["dig_s"] = round(time.perf_counter() - t1, 2)
         result["excluded_count"] = sum(excluded.values())
-        result["picks"] = [p.to_dict() for p in picks]
+        result["picks"] = [p.to_dict(youtube_target=cfg.youtube_target) for p in picks]
         if record and conn is not None and picks:
             result["session_id"] = record_dig(conn, resolved, picks)
         if export_playlist and picks:
@@ -928,9 +942,9 @@ def quick(
             name = playlist or default_playlist_name(resolved)
             result["playlist_name"] = name
             try:
-                report = export(picks, name, sink=sink, conn=conn)
+                report = export(picks, name, sink=sink, conn=conn, target=cfg.youtube_target)
             except Exception as exc:  # reported to the caller, never swallowed
-                result["export_error"] = _export_error(exc)
+                result["export_error"] = _export_error(exc, target=_sink_target(sink, cfg.youtube_target))
             else:
                 result["playlist_url"] = report.playlist_url
                 result["export"] = report.to_dict()

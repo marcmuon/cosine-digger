@@ -509,15 +509,60 @@ extension ServerSettings {
     }
 }
 
-/// The YouTube Music login on the computer: whether one is saved, what Digger's last check of
-/// it said (connected, rejected, unreachable), and whether that Mac's Chrome can log in.
+/// Where playlist and track links open, matching the server's `COSINE_DIGGER_YOUTUBE_TARGET`.
+public enum YouTubeTarget: String, Codable, Hashable, Sendable {
+    case youtube
+    case youtubeMusic = "youtube_music"
+
+    public var name: String { self == .youtubeMusic ? "YouTube Music" : "YouTube" }
+    public var shortName: String { self == .youtubeMusic ? "YT Music" : "YouTube" }
+
+    public func watchURL(_ videoID: String) -> URL? {
+        let host = self == .youtubeMusic ? "music.youtube.com" : "www.youtube.com"
+        return URL(string: "https://\(host)/watch?v=\(APIClient.segment(videoID))")
+    }
+
+    public func searchURL(_ query: String) -> URL? {
+        // Encode via APIClient.segment so "+" becomes "%2B" rather than a space in the query.
+        let encoded = APIClient.segment(query)
+        if self == .youtubeMusic {
+            return URL(string: "https://music.youtube.com/search?q=\(encoded)")
+        }
+        return URL(string: "https://www.youtube.com/results?search_query=\(encoded)")
+    }
+
+    public func externalURL(videoID: String?, query: String) -> URL? {
+        if let videoID { return watchURL(videoID) }
+        return searchURL(query)
+    }
+}
+
+/// The YouTube login on the computer: whether one is saved, what Digger's last check of
+/// it said (connected, rejected, unreachable), whether that Mac's Chrome can log in,
+/// and which YouTube site links target.
 public struct YouTubeStatus: Codable, Hashable, Sendable {
     public var loggedIn: Bool?
     public var saved: Bool?
     public var checked: String?
     public var chrome: Bool?
+    public var target: String?
 
-    enum CodingKeys: String, CodingKey { case loggedIn = "logged_in", saved, checked, chrome }
+    public init(loggedIn: Bool? = nil, saved: Bool? = nil, checked: String? = nil, chrome: Bool? = nil, target: String? = nil) {
+        self.loggedIn = loggedIn
+        self.saved = saved
+        self.checked = checked
+        self.chrome = chrome
+        self.target = target
+    }
+
+    /// When `target` is absent, the server predates `COSINE_DIGGER_YOUTUBE_TARGET` and still
+    /// writes `music.youtube.com` playlist URLs.
+    public var resolvedTarget: YouTubeTarget {
+        guard let target else { return .youtubeMusic }
+        return YouTubeTarget(rawValue: target) ?? .youtube
+    }
+
+    enum CodingKeys: String, CodingKey { case loggedIn = "logged_in", saved, checked, chrome, target }
 }
 
 /// Why a dig can't go to YouTube Music, as the web client tells: no login saved on the

@@ -55,7 +55,18 @@ final class MovesTests: XCTestCase {
         XCTAssertEqual(Explain.moveTitle(.label, point: Moves.factPoint(kind: "label", entity: FactEntity(id: "1", name: "Label A"),
                                                                     stepID: "s", rank: 1)),
                        "Sounds like the label Label A")
-        XCTAssertEqual(Explain.youTubeMusicURL(envelope.picks[0])?.absoluteString, "https://music.youtube.com/watch?v=jNQXAC9IVRw")
+        XCTAssertEqual(Explain.youTubeURL(envelope.picks[0])?.absoluteString, "https://www.youtube.com/watch?v=jNQXAC9IVRw")
+        XCTAssertEqual(Explain.youTubeURL(envelope.picks[0], target: .youtubeMusic)?.absoluteString, "https://music.youtube.com/watch?v=jNQXAC9IVRw")
+        let noVideo = try XCTUnwrap(envelope.picks.first { $0.videoID == nil })
+        XCTAssertEqual(Explain.youTubeURL(noVideo)?.absoluteString,
+                       "https://www.youtube.com/results?search_query=Discovery%20Artist%204%20-%20Discovery%204")
+        XCTAssertEqual(Explain.youTubeURL(noVideo, target: .youtubeMusic)?.absoluteString,
+                       "https://music.youtube.com/search?q=Discovery%20Artist%204%20-%20Discovery%204")
+        // Plus signs must be percent-encoded so they aren't turned into spaces in the query.
+        XCTAssertEqual(YouTubeTarget.youtube.searchURL("Simon + Garfunkel")?.absoluteString,
+                       "https://www.youtube.com/results?search_query=Simon%20%2B%20Garfunkel")
+        XCTAssertEqual(YouTubeTarget.youtubeMusic.searchURL("Simon + Garfunkel")?.absoluteString,
+                       "https://music.youtube.com/search?q=Simon%20%2B%20Garfunkel")
     }
 }
 

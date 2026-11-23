@@ -66,10 +66,7 @@ public enum Explain {
     }
 
     /// Where a pick can be heard outside the app.
-    public static func youTubeMusicURL(_ pick: Pick) -> URL? {
-        if let video = pick.videoID { return URL(string: "https://music.youtube.com/watch?v=\(video)") }
-        var components = URLComponents(string: "https://music.youtube.com/search")
-        components?.queryItems = [URLQueryItem(name: "q", value: pick.name)]
-        return components?.url
+    public static func youTubeURL(_ pick: Pick, target: YouTubeTarget = .youtube) -> URL? {
+        target.externalURL(videoID: pick.videoID, query: pick.name)
     }
 }

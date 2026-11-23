@@ -126,7 +126,7 @@ final class PlaybackTests: XCTestCase {
         playback.play(all, startAt: noVideo)
         try await Task.sleep(nanoseconds: 300_000_000)
         XCTAssertEqual(playback.current?.id, all[noVideo].id)
-        XCTAssertEqual(playback.status, .refused("No YouTube video for this track. Search for it in YouTube Music."))
+        XCTAssertEqual(playback.status, .refused("No YouTube video for this track. Search for it in YouTube."))
     }
 
     @MainActor func testPassingThePausedTrackWaitsForATap() async throws {

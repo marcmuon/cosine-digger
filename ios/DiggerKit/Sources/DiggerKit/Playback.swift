@@ -84,6 +84,8 @@ public final class Playback {
     @ObservationIgnored public var isPassed: (String) -> Bool = { _ in false }
     @ObservationIgnored public var onHeard: (QueueItem) -> Void = { _ in }
     @ObservationIgnored public var onRefused: (QueueItem, String) -> Void = { _, _ in }
+    /// Service name for the "no video" fallback notice (matches the server's YouTube target).
+    @ObservationIgnored public var serviceName: () -> String = { YouTubeTarget.youtube.name }
     /// How long a refusal stays on screen before the next track starts (the web waits 2 s).
     @ObservationIgnored public var refusalDelay: Double = 2.5
     /// Listening time after which a track counts as heard (the web's 30 s).
@@ -250,7 +252,7 @@ public final class Playback {
         needsReload = false
         reachedAutomatically = automatically
         guard let video = item.videoID else {
-            refuse("No YouTube video for this track. Search for it in YouTube Music.", moveOn: automatically)
+            refuse("No YouTube video for this track. Search for it in \(serviceName()).", moveOn: automatically)
             return
         }
         if cueOnly {

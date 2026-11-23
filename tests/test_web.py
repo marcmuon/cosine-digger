@@ -222,7 +222,9 @@ def test_fixture_routes_never_read_ambient_settings_or_construct_real_providers(
             "origin: https://music.youtube.com\nx-goog-authuser: 0"})
         reply = login.json()
         # The reply carries the server's settings: a login saved in test mode has no verdict.
-        assert reply.pop("settings")["youtube"] == {"logged_in": True, "saved": True, "checked": None, "chrome": False}
+        assert reply.pop("settings")["youtube"] == {
+            "logged_in": True, "saved": True, "checked": None, "chrome": False, "target": "youtube",
+        }
         assert reply == {"ok": True, "logged_in": True, "state": "saved"}
     assert ambient_reads == [] and real_providers == [] and attempts == []
 
@@ -380,7 +382,9 @@ def test_youtube_login_never_echoes_headers(web, monkeypatch, cfg):
     # The reply carries the server's settings now, and still never the headers.
     assert secret not in response.text
     reply = response.json()
-    assert reply.pop("settings")["youtube"] == {"logged_in": False, "saved": False, "checked": None, "chrome": False}
+    assert reply.pop("settings")["youtube"] == {
+        "logged_in": False, "saved": False, "checked": None, "chrome": False, "target": "youtube",
+    }
     assert reply == {"ok": True, "logged_in": False, "state": "missing"}
     assert calls == [(secret, cfg.ytmusic_auth_path)]
 
@@ -613,7 +617,7 @@ def test_export_job_errors_never_carry_provider_text(cfg):
     result = recorded(cfg)
     with TestClient(create_app(cfg, client_factory=Cosine, sink_factory=Leaky), base_url="http://localhost") as web:
         job, events = finish(web, web.post("/api/export", json={"session_id": result["session_id"], "name": "Saved"}))
-    assert job["state"] == "error" and "YouTube Music export failed" in job["error"]
+    assert job["state"] == "error" and "YouTube export failed" in job["error"]
     assert "SYNTH_COOKIE_SECRET" not in json.dumps(job) + json.dumps(events)
 
 
@@ -628,6 +632,56 @@ def test_a_broken_login_never_reaches_the_job_error(cfg, monkeypatch):
     with TestClient(create_app(cfg, client_factory=Cosine), base_url="http://localhost") as web:
         job, events = finish(web, web.post("/api/export", json={"session_id": result["session_id"], "name": "Saved"}))
     assert job["state"] == "error" and "SYNTH_COOKIE_SECRET" not in json.dumps(job) + json.dumps(events)
+
+
+def test_youtube_target_env_controls_settings_and_playlist_links(tmp_path, monkeypatch):
+    from cosine_digger import youtube
+    from cosine_digger.config import load_config
+
+    monkeypatch.setenv("HOME", str(tmp_path))
+    monkeypatch.setenv("COSINE_DIGGER_HOME", str(tmp_path / "home"))
+    monkeypatch.setenv("COSINE_DIGGER_NO_DOTENV", "1")
+    monkeypatch.setenv("COSINE_DIGGER_YOUTUBE_TARGET", "youtube_music")
+    cfg = load_config()
+    cfg.ytmusic_auth_path.parent.mkdir(parents=True, exist_ok=True)
+    cfg.ytmusic_auth_path.write_text(json.dumps({"cookie": "fixture", "x-goog-authuser": "1"}))
+    with closing(api.open_db(cfg.db_path)) as conn:
+        api.DbIdStore(conn)["Digger Daily"] = "PLdaily1"
+    # Signed-out dig export marks youtube_login rejected in youtube_music mode too.
+    class SignedOutSink:
+        target = "youtube_music"
+
+        def __init__(self, conn):
+            pass
+
+        def replace_playlist(self, *args, **kwargs):
+            raise youtube.YouTubeExportError(youtube.signed_out_message("youtube_music"), changed=False)
+
+    with TestClient(create_app(cfg, client_factory=Cosine, sink_factory=SignedOutSink), base_url="http://localhost") as web:
+        created = web.post("/api/digs", json={"seeds": [track_point()]})
+        dig_id = created.json()["dig_id"]
+        dig_job, _ = finish(web, created)
+        assert dig_job["state"] == "done" and dig_job["result"]["pick_count"] > 0
+        job, _ = finish(web, web.post(f"/api/digs/{dig_id}/export", json={}))
+        assert job["state"] == "error" and "YouTube Music says you're signed out" in job["error"]
+        assert web.get("/api/settings").json()["youtube"]["checked"] == "rejected"
+
+    result = recorded(cfg)
+    assert all(p["youtube_url"].startswith("https://music.youtube.com/watch?v=") for p in result["picks"])
+    with TestClient(create_app(cfg, client_factory=Cosine, sink_factory=Sink), base_url="http://localhost") as web:
+        assert web.get("/api/settings").json()["youtube"]["target"] == "youtube_music"
+        assert web.get("/api/playlists").json()["daily"]["playlist_url"] == (
+            "https://music.youtube.com/playlist?list=PLdaily1&authuser=1")
+        job, _ = finish(web, web.post("/api/export", json={"session_id": result["session_id"], "name": "Saved"}))
+        assert job["result"]["playlist_url"] == "https://music.youtube.com/playlist?list=PLtest&authuser=1"
+        assert job["result"]["export"]["playlist_url"] == job["result"]["playlist_url"]
+
+    monkeypatch.setenv("COSINE_DIGGER_YOUTUBE_TARGET", "youtube")
+    cfg_yt = load_config()
+    with TestClient(create_app(cfg_yt, client_factory=Cosine), base_url="http://localhost") as web:
+        assert web.get("/api/settings").json()["youtube"]["target"] == "youtube"
+        assert web.get("/api/playlists").json()["daily"]["playlist_url"] == (
+            "https://www.youtube.com/playlist?list=PLdaily1&authuser=1")
 
 
 def test_shutdown_waits_for_a_running_export(cfg):

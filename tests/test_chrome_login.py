@@ -69,7 +69,7 @@ def test_the_headers_make_a_browser_login_ytmusicapi_accepts(tmp_path):
 
 def test_signed_out_profile_and_a_wrong_key_say_so_without_values(tmp_path):
     base = chrome(tmp_path, [(".youtube.com", "PREF", "not-a-login", FUTURE)])
-    with pytest.raises(chrome_login.ChromeLoginError, match="isn't signed in to YouTube Music"):
+    with pytest.raises(chrome_login.ChromeLoginError, match="isn't signed in to YouTube"):
         headers(base)
     with pytest.raises(chrome_login.ChromeLoginError) as wrong:
         headers(base, password=b"some other password")

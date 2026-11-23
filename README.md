@@ -20,12 +20,12 @@ cosine-digger status   says whether it's running, and where
 
 ## What it does
 
-Dig for music you haven't heard yet. Start from a track you love: each step lists tracks that sound like it, found by [cosine.club](https://cosine.club) audio similarity. Listen in the built-in player, keep or pass, then follow a track, its label, its artist or a credited person to the next step. Your keeps feed two private YouTube Music playlists, **Digger Daily** and **Digger Weekly**, that Digger refreshes when you press **Run now**, or on a schedule you set up with `cosine-digger schedule install`.
+Dig for music you haven't heard yet. Start from a track you love: each step lists tracks that sound like it, found by [cosine.club](https://cosine.club) audio similarity. Listen in the built-in player, keep or pass, then follow a track, its label, its artist or a credited person to the next step. Your keeps feed two private YouTube playlists, **Digger Daily** and **Digger Weekly**, that Digger refreshes when you press **Run now**, or on a schedule you set up with `cosine-digger schedule install`.
 
 It runs on your computer with your own keys. Labels, artists and credits come from [Discogs](https://www.discogs.com). The app is built for desktop browsers in windows 1100 px wide or more; narrower windows show a notice.
 
 - **Dig.** A dig is a saved trail of steps. Each step is one move, such as "sounds like this track" or "sounds like its label", and every pick says why it's there.
-- **Feeds.** About 20 new tracks for the daily playlist and 50 for the weekly one, written to private YouTube Music playlists that are replaced on each run. Nothing you own or were already served comes back.
+- **Feeds.** About 20 new tracks for the daily playlist and 50 for the weekly one, written to private YouTube playlists that are replaced on each run. Nothing you own or were already served comes back.
 - **Learns only from keep and pass.** Your keeps, your passes and your music library shape the feeds. Looking around never does.
 - **Command line and agents.** `quick` turns a few tracks into a private playlist and a why-list in seconds; `/dig` does the same from an agent.
 
@@ -65,9 +65,9 @@ A step is a snapshot. Open it again and you get the same picks in the same order
 - `[` and `]` go to the previous and next track. `←` and `→` seek 15 s; `Shift+→` seeks 60 s.
 - A new step never starts playing by itself. When a step ends, the player shows "Step N finished. Where next:" with up to three moves to try.
 - After 30 s of play a track is marked **heard**. Passed tracks are skipped.
-- Some videos refuse to play outside YouTube. The player says so, offers **Open in YouTube Music**, and skips after 2 s. The inspector always links the selected track: **Open in YouTube Music ↗**, or **Search YouTube Music ↗** when there's no video.
+- Some videos refuse to play outside YouTube. The player says so, offers **Open in YouTube**, and skips after 2 s. The inspector always links the selected track: **Open in YouTube ↗**, or **Search YouTube ↗** when there's no video.
 - Playback pauses when you switch tabs or hide the window, and comes back paused after a reload. Press ▶ to go on.
-- To keep listening in another tab, press **▶ Send to YT Music** under the dig's name. Digger makes the dig a private YouTube Music playlist (every step's tracks in order, each once, passes left out) and opens it in a new tab. **Open in YT Music** opens it again; **Update** brings it up to date after new steps. Sending a dig never changes your Daily or Weekly.
+- To keep listening in another tab, press **▶ Send to YouTube** under the dig's name. Digger makes the dig a private YouTube playlist (every step's tracks in order, each once, passes left out) and opens it in a new tab. **Open in YouTube** opens it again; **Update** brings it up to date after new steps. Sending a dig never changes your Daily or Weekly.
 - If your browser blocks YouTube's cookies, YouTube can't see a Premium account, so ads may play.
 
 ### Selecting is not playing
@@ -80,7 +80,7 @@ Click a row, or use `↑` `↓`, to select a track. The selection drives the ins
 
 ### The inspector
 
-With a track selected, the inspector has **▶ Play**, **★ Keep**, **✕ Pass** and the YouTube Music link, then two sections:
+With a track selected, the inspector has **▶ Play**, **★ Keep**, **✕ Pass** and the YouTube link, then two sections:
 
 - **Why it's here**: how this dig found the track, for example "Sounds like Florian T M Zeisig - 85805. Nearness 0.97, rank 2 of 25.", with its similarity to each seed.
 - **Facts** (from Discogs): what Discogs says about the record: artist, label, year, credits and style, plus **Discogs release ↗**. Each artist, label and credit has **Sounds like it**; Shift-click goes one step further.
@@ -125,9 +125,9 @@ Press `V`, or **Map** in the faceplate, to see the whole dig as one map, each st
 
 ### Feeds
 
-The **Feeds** screen shows **Digger Daily** and **Digger Weekly**: how each one's last run went, and **▶ Open in YT Music** once the playlist exists.
+The **Feeds** screen shows **Digger Daily** and **Digger Weekly**: how each one's last run went, and **▶ Open in YouTube** once the playlist exists.
 
-- **Run now** builds the playlist, writes it to YouTube Music, reads it back and checks it.
+- **Run now** builds the playlist, writes it to YouTube, reads it back and checks it.
 - **Dry run** builds it without writing, so you can see the picks and why each was chosen.
 
 Digger refreshes them when you press **Run now**. To refresh them on a schedule, run `cosine-digger schedule install` in Terminal and follow what it prints; it needs your cosine.club key saved in Digger (pasting it in the browser does that). Times and sizes are in Setup under **Schedule**: by default Daily at 06:00 with 20 tracks and Weekly on Monday at 06:00 with 50; sizes run from 5 to 100. A Digger started with `cosine-digger serve`, `cosine-digger start --scheduler` or Docker also keeps that schedule itself while it runs, and missed runs catch up once on its next start.
@@ -184,7 +184,7 @@ Manse - Lighght now counts toward Digger Daily and Digger Weekly, and it won't c
 Everything above works with only the cosine.club key. Open **Setup** (top right of the app) to add more. Press **Save settings** to keep what you enter.
 
 1. **Discogs token**: get one at discogs.com/settings/developers. Label, artist and credited-person moves, the **Facts** panel and the shared labels and people on the map all need it. Without it you can still dig from seeds and tracks.
-2. **YouTube Music login**, so Digger can write your playlists. Open music.youtube.com signed in, then developer tools → Network → filter `browse` → right-click a POST request → Copy → **Copy as cURL** (Firefox: Copy Value → Copy Request Headers). Paste it under **YouTube Music** and press **Log in**, or run `pbpaste | cosine-digger youtube login`. The headers stay in a private file (`~/.cosine-digger/ytmusic_auth.json`, mode 0600).
+2. **YouTube login**, so Digger can write your playlists (YouTube and YouTube Music share one playlist store). Open music.youtube.com signed in, then developer tools → Network → filter `browse` → right-click a POST request → Copy → **Copy as cURL** (Firefox: Copy Value → Copy Request Headers). Paste it under **YouTube** and press **Log in**, or run `pbpaste | cosine-digger youtube login`. The headers stay in a private file (`~/.cosine-digger/ytmusic_auth.json`, mode 0600). Playlists and track links open on `www.youtube.com` by default; set `COSINE_DIGGER_YOUTUBE_TARGET=youtube_music` (or `"youtube_target": "youtube_music"` in `settings.json`; aliases `youtube-music`, `ytmusic`, `music`) to switch back to YouTube Music.
 3. **Library**: enter any folder of tagged audio files as **Music folder** and press **Scan now**, or run `cosine-digger taste-scan ~/Music`. Scanning only reads your files and never changes them. Tracks you own never come back as picks or land in a playlist. **Fill missing labels from Discogs** looks up labels for library rows that have none.
 4. **Exa API key**: adds fresh releases to your playlists.
 
@@ -228,7 +228,7 @@ No LLM runs inside the product; every "why" comes from the real route a track wa
 
 ## Privacy
 
-Your digs, keeps and passes, library rows, settings and YouTube login stay on your computer (`~/.cosine-digger/`, or `COSINE_DIGGER_HOME`). The app listens on 127.0.0.1 only: `cosine-digger start` always does, and `serve` does unless you change `COSINE_DIGGER_HOST` or run `serve --companion`. Companion mode listens on your network for the iPhone and iPad app and lets another device in only with the pairing token in `~/.cosine-digger/companion_token`; a paired device can search, dig, keep, pass and mark heard, send a dig to its YouTube Music playlist, and ask this computer to log in to YouTube Music from its Chrome. It can read what Setup shows (the schedule, your music and data folder paths, and the last four characters of each key) but can't change settings, read a whole key or paste a login. Network calls go to cosine.club (similarity), Discogs (labels, artists and credits), YouTube Music (your playlists) and, if you set a key, Exa (fresh releases). To play tracks, the page embeds YouTube's player, loaded from youtube.com.
+Your digs, keeps and passes, library rows, settings and YouTube login stay on your computer (`~/.cosine-digger/`, or `COSINE_DIGGER_HOME`). The app listens on 127.0.0.1 only: `cosine-digger start` always does, and `serve` does unless you change `COSINE_DIGGER_HOST` or run `serve --companion`. Companion mode listens on your network for the iPhone and iPad app and lets another device in only with the pairing token in `~/.cosine-digger/companion_token`; a paired device can search, dig, keep, pass and mark heard, send a dig to its YouTube playlist, and ask this computer to log in to YouTube from its Chrome. It can read what Setup shows (the schedule, your music and data folder paths, and the last four characters of each key) but can't change settings, read a whole key or paste a login. Network calls go to cosine.club (similarity), Discogs (labels, artists and credits), YouTube Music (your playlists) and, if you set a key, Exa (fresh releases). To play tracks, the page embeds YouTube's player, loaded from youtube.com.
 
 ## From a checkout, or with Docker
 

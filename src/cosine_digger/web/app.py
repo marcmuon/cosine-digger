@@ -324,23 +324,29 @@ def create_app(cfg=None, *, scheduler=False, client_factory=None, sink_factory=N
         finally:
             instance.close()
 
+    def current_config():
+        with settings_lock:
+            return cfg
+
     def sink(conn):
+        config = current_config()
         if fixtures is not None:
-            return fixtures.youtube_sink(api.DbIdStore(conn))
+            return fixtures.youtube_sink(api.DbIdStore(conn), target=config.youtube_target)
         if sink_factory:
             return sink_factory(conn)
 
         def authenticated():
-            if not cfg.ytmusic_auth_path.is_file():
-                raise youtube.YouTubeAuthMissing("YouTube Music login missing")
-            return youtube.YTMusic(str(cfg.ytmusic_auth_path))
+            if not config.ytmusic_auth_path.is_file():
+                raise youtube.YouTubeAuthMissing(f"{youtube.service_name(config.youtube_target)} login missing")
+            return youtube.YTMusic(str(config.ytmusic_auth_path))
 
         try:
-            return youtube.YTMusicSink(ytm_factory=authenticated, id_store=api.DbIdStore(conn))
+            return youtube.YTMusicSink(ytm_factory=authenticated, id_store=api.DbIdStore(conn),
+                                       target=config.youtube_target)
         except youtube.YouTubeAuthMissing:
             raise
         except Exception as exc:  # a bad login can quote its cookies: our words only
-            raise youtube.YouTubeExportError(api._export_error(exc)) from None
+            raise youtube.YouTubeExportError(api._export_error(exc, target=config.youtube_target)) from None
 
     def start_job(kind, action):
         job = Job(uuid4().hex, kind)
@@ -368,7 +374,7 @@ def create_app(cfg=None, *, scheduler=False, client_factory=None, sink_factory=N
                 # Our own errors are written for people; others keep their
                 # type and (secret-redacted, truncated) message so they can be acted on.
                 if isinstance(exc, (youtube.YouTubeAuthMissing, youtube.YouTubeExportError, LockTimeout)):
-                    message = api._export_error(exc)
+                    message = api._export_error(exc, target=current_config().youtube_target)
                 elif isinstance(exc, playlists.PlaylistError):
                     message = str(exc)
                 else:
@@ -496,7 +502,7 @@ def create_app(cfg=None, *, scheduler=False, client_factory=None, sink_factory=N
         # saved: the file holds a login (an empty {} doesn't); checked: the last check, until the next login.
         saved = youtube.has_login(config.ytmusic_auth_path)
         result["youtube"] = {"logged_in": saved, "saved": saved, "checked": verdicts.get("youtube_login") if saved else None,
-                             "chrome": chrome.available()}
+                             "chrome": chrome.available(), "target": config.youtube_target}
         # Setup › About names the same folders `cosine-digger status` prints.
         result["data"] = {"home": str(config.home), "db": str(Path(config.db_path).expanduser().resolve())}
         result["has_digs"] = _has_digs()
@@ -603,8 +609,10 @@ def create_app(cfg=None, *, scheduler=False, client_factory=None, sink_factory=N
 
     @app.get("/api/playlists")
     def playlists_read():
-        with closing(api.open_db(cfg.db_path)) as conn:
+        config = current_config()
+        with closing(api.open_db(config.db_path)) as conn:
             result = {}
+            account = youtube.login_account(config.ytmusic_auth_path)
             for kind, name in playlists.DEFAULT_NAMES.items():
                 row = conn.execute("SELECT status, finished_at, detail FROM job_runs WHERE job = ? ORDER BY id DESC LIMIT 1", (kind,)).fetchone()
                 last = dict(zip(("status", "finished_at", "detail"), row)) if row else None
@@ -612,9 +620,10 @@ def create_app(cfg=None, *, scheduler=False, client_factory=None, sink_factory=N
                 # Under start nothing inside Digger runs the feeds on a clock, so
                 # there is no next run to show (P14); schedule install runs outside.
                 scheduled = loop is not None
-                result[kind] = {"name": name, "playlist_url": f"https://music.youtube.com/playlist?list={playlist_id}" if playlist_id else None,
+                result[kind] = {"name": name,
+                                "playlist_url": youtube.playlist_url(playlist_id, target=config.youtube_target, account=account) if playlist_id else None,
                                 "last_run": redact(last), "scheduled": scheduled,
-                                "next_run": schedule.next_run(kind, cfg, datetime.now().astimezone()).isoformat()
+                                "next_run": schedule.next_run(kind, config, datetime.now().astimezone()).isoformat()
                                 if scheduled else None}
             return result
 
@@ -656,12 +665,17 @@ def create_app(cfg=None, *, scheduler=False, client_factory=None, sink_factory=N
                 raise HTTPException(404, "Session results not found")
 
         def action(conn, emit):
+            config = current_config()
             rows = conn.execute("SELECT track_id, artist, track_name, video_id, score, via, hop FROM session_results WHERE session_id = ? ORDER BY hop, score DESC",
                                 (body.session_id,)).fetchall()
             picks = [api.Pick(Track(id=r[0], name=r[2], artist=r[1] or "", track=r[2], video_id=r[3]),
                               r[4] or 0, "From your dig", via=r[5] or "", hop=r[6]) for r in rows]
-            report = api.export(picks, body.name, sink=sink(conn), conn=conn)
-            return {"session_id": body.session_id, "playlist_url": report.playlist_url, "export": report.to_dict()}
+            report = api.export(picks, body.name, sink=sink(conn), conn=conn, target=config.youtube_target)
+            account = youtube.login_account(config.ytmusic_auth_path)
+            url = youtube.account_link(report.playlist_url, account)
+            return {"session_id": body.session_id,
+                    "playlist_url": url,
+                    "export": {**report.to_dict(), "playlist_url": url}}
         return start_job("playlist", action)
 
     @app.post("/api/digs/{dig_id}/export")
@@ -677,11 +691,11 @@ def create_app(cfg=None, *, scheduler=False, client_factory=None, sink_factory=N
 
             def action(conn, emit):
                 with settings_lock:
-                    login = logins["saved"]
+                    config, login = cfg, logins["saved"]
                 try:
-                    result = api.export_dig(conn, dig_id, sink=sink(conn))
+                    result = api.export_dig(conn, dig_id, sink=sink(conn), target=config.youtube_target)
                 except youtube.YouTubeExportError as exc:
-                    if youtube.SIGNED_OUT in str(exc):
+                    if youtube.is_signed_out_message(str(exc)):
                         # YouTube refused the saved login: the settings say so, as a check of it
                         # would (unless a login was saved meanwhile), so every client offers to
                         # log in again rather than to send again.
@@ -690,7 +704,7 @@ def create_app(cfg=None, *, scheduler=False, client_factory=None, sink_factory=N
                                 checked["youtube_login"] = "rejected"
                                 changed()
                     raise
-                account = youtube.login_account(cfg.ytmusic_auth_path)
+                account = youtube.login_account(config.ytmusic_auth_path)
                 return {**result, "playlist_url": youtube.account_link(result["playlist_url"], account)}
             started = start_job("playlist", action)
             dig_sends[dig_id] = started["job_id"]
@@ -699,13 +713,21 @@ def create_app(cfg=None, *, scheduler=False, client_factory=None, sink_factory=N
     @app.post("/api/playlists/{kind}/run")
     def playlist_run(kind: Literal["daily", "weekly"], body: PlaylistRun):
         def action(conn, emit):
+            config = current_config()
             with client() as cosine, (fixtures.discogs_client(budget=60)[0]
                                      if fixtures is not None else nullcontext()) as dg:
-                return playlists.run_playlist(kind, cfg=replace(cfg, exa_api_key=None) if fixtures else cfg,
-                                              conn=conn, client=cosine, discogs_client=dg,
-                                              sink=None if body.dry_run else sink(conn),
-                                              name=body.name, dry_run=body.dry_run, log_run=True,
-                                              notify=lambda message: emit("progress", {"message": api.plain(message)}))
+                result = playlists.run_playlist(kind, cfg=replace(config, exa_api_key=None) if fixtures else config,
+                                                conn=conn, client=cosine, discogs_client=dg,
+                                                sink=None if body.dry_run else sink(conn),
+                                                name=body.name, dry_run=body.dry_run, log_run=True,
+                                                notify=lambda message: emit("progress", {"message": api.plain(message)}))
+                if result.get("playlist_url"):
+                    account = youtube.login_account(config.ytmusic_auth_path)
+                    url = youtube.account_link(result["playlist_url"], account)
+                    result = {**result, "playlist_url": url}
+                    if isinstance(result.get("export"), dict) and result["export"].get("playlist_url"):
+                        result["export"] = {**result["export"], "playlist_url": url}
+                return result
         return start_job("playlist", action)
 
     @app.post("/api/youtube/login")
@@ -733,7 +755,9 @@ def create_app(cfg=None, *, scheduler=False, client_factory=None, sink_factory=N
             try:
                 youtube.login(headers, cfg.ytmusic_auth_path)
             except Exception:
-                raise HTTPException(400, "Could not save YouTube Music login; check the browser headers") from None
+                raise HTTPException(
+                    400, f"Could not save {youtube.service_name(cfg.youtube_target)} login; check the browser headers"
+                ) from None
             checked.pop("youtube_login", None)
             changed()
             logins["saved"] += 1

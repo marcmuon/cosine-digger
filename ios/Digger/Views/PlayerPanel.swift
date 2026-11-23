@@ -123,6 +123,7 @@ struct PlaybackStatus: View {
         Group {
             switch playback.status {
             case .refused(let message):
+                let target = session.youtubeTarget
                 HStack(alignment: .center, spacing: 8) {
                     Text("! \(message)")
                         .foregroundStyle(Theme.amber)
@@ -130,11 +131,11 @@ struct PlaybackStatus: View {
                         .fixedSize(horizontal: false, vertical: true)
                     if let url = musicURL {
                         Link(destination: url) {
-                            Text("YT Music")
+                            Text(target.shortName)
                         }
                         .buttonStyle(.key(.youtube, size: .small))
-                        .accessibilityLabel("YouTube Music")
-                        .accessibilityHint("Opens this track in YouTube Music.")
+                        .accessibilityLabel(target.name)
+                        .accessibilityHint("Opens this track in \(target.name).")
                     }
                 }
             case .paused where playback.pausedForApp:
@@ -161,10 +162,7 @@ struct PlaybackStatus: View {
 extension PlaybackStatus {
     /// Where the track can still be heard when it won't play here.
     var musicURL: URL? {
-        if let video = item.videoID { return URL(string: "https://music.youtube.com/watch?v=\(video)") }
-        var components = URLComponents(string: "https://music.youtube.com/search")
-        components?.queryItems = [URLQueryItem(name: "q", value: item.name)]
-        return components?.url
+        session.youtubeTarget.externalURL(videoID: item.videoID, query: item.name)
     }
 }
 

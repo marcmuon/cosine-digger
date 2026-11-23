@@ -7,20 +7,22 @@ pass and heard mark is read from and saved to its database, so the browser app a
 the same dig.
 
 This is the first pass: the dig journey on iPhone and iPad, and sending a dig to its own private
-YouTube Music playlist (the trail's Send to YT Music, as in the browser app). Feeds, the map,
-library scans and keys stay in the browser app for now.
+YouTube playlist (the trail's Send to YouTube, as in the browser app; follows the server's
+`COSINE_DIGGER_YOUTUBE_TARGET` setting). Feeds, the map, library scans and keys stay in the browser
+app for now.
 
-## YouTube Music
+## YouTube
 
-The trail (pushed on a phone, the sidebar on a wide iPad) starts with the dig's YouTube Music
-keys, and the Dig menu has the same send: **Send to YT Music** makes a private playlist of the
-dig on your computer's YouTube Music login (every step's picks in order, passes left out),
-**Open in YT Music** opens it in the YouTube Music app (in Safari when the app isn't installed),
-and **Update** brings it up to date.
+The trail (pushed on a phone, the sidebar on a wide iPad) starts with the dig's YouTube keys, and
+the Dig menu has the same send: **Send to YouTube** makes a private playlist of the dig on your
+computer's YouTube login (every step's picks in order, passes left out), **Open in YouTube** opens
+it in the YouTube app (in Safari when the app isn't installed), and **Update** brings it up to
+date. Set `COSINE_DIGGER_YOUTUBE_TARGET=youtube_music` on the server to switch back to YouTube
+Music.
 
-The login stays on the computer. When Digger there has none, **Connect YT Music** opens the
-Connection screen, where **Log in from Chrome on your Mac** asks that Digger to read YouTube
-Music's sign-in from Chrome on the Mac, as the browser app's Setup does. macOS asks on the Mac
+The login stays on the computer. When Digger there has none, **Connect YouTube** opens the
+Connection screen, where **Log in from Chrome on your Mac** asks that Digger to read YouTube's
+sign-in from Chrome on the Mac, as the browser app's Setup does. macOS asks on the Mac
 to use "Chrome Safe Storage" first; click Allow there, so do it while you're at the Mac. The
 cookies are read and kept on the Mac and only the login's state comes to the phone. Logging in
 again keeps the Google account the saved login acts as. While a login works, the phone doesn't

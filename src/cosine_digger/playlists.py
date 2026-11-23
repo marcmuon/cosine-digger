@@ -74,8 +74,8 @@ class PlanTrack(Pick):
     label: str | None = None
     source_url: str | None = None
 
-    def to_dict(self) -> dict[str, Any]:
-        out = super().to_dict()
+    def to_dict(self, *, youtube_target: str | None = None) -> dict[str, Any]:
+        out = super().to_dict(youtube_target=youtube_target)
         out.update(source=self.source, label=self.label, source_url=self.source_url)
         return out
 
@@ -624,7 +624,7 @@ def plan_playlist(
         "kind": kind,
         "name": name or DEFAULT_NAMES[kind],
         "date": now.date().isoformat(),
-        "tracks": [p.to_dict() for p in tracks],
+        "tracks": [p.to_dict(youtube_target=cfg.youtube_target) for p in tracks],
         "checks": verify(tracks, ex),
         "sources": {"anchors": len(anchors), "anchor_tracks": len(seed_labels),
                     "similar": len(similar), "chain": len(chained), "fresh": len(fresh),
@@ -687,12 +687,13 @@ def run_playlist(
         try:
             result = _locked(run, cfg, conn)
         except BaseException as exc:
-            storage.job_finish(log, run_id, "error", _safe_detail(exc) if isinstance(exc, Exception) else "interrupted")
+            storage.job_finish(log, run_id, "error",
+                               _safe_detail(exc, target=cfg.youtube_target) if isinstance(exc, Exception) else "interrupted")
             raise
         try:
             status, detail = "ok", run_outcome(result)
         except PlaylistError as exc:
-            status, detail = "error", _safe_detail(exc)
+            status, detail = "error", _safe_detail(exc, target=cfg.youtube_target)
         storage.job_finish(log, run_id, status, detail)
         return result
 
@@ -725,9 +726,9 @@ def _run_playlist(kind, *, cfg, conn, client, sink, name, dry_run, now, notify,
             from .youtube import YTMusicSink
 
             try:
-                sink = YTMusicSink(id_store=api.DbIdStore(conn))
+                sink = YTMusicSink(id_store=api.DbIdStore(conn), target=cfg.youtube_target)
             except Exception as exc:  # fail before spending any lookups
-                raise PlaylistError(api._export_error(exc)) from exc
+                raise PlaylistError(api._export_error(exc, target=cfg.youtube_target)) from exc
         result = plan_playlist(kind, conn, client, cfg=cfg, name=name, now=now,
                                http_cache=cache, notify=notify, discogs_client=discogs_client)
         picks = result.pop("_picks")
@@ -744,9 +745,9 @@ def _run_playlist(kind, *, cfg, conn, client, sink, name, dry_run, now, notify,
                 return [p for p in candidates if fresh_ex.reason(p.track, getattr(p, "label", None)) is None]
 
             report = api.export(picks, result["name"], sink=sink, conn=conn, description=description,
-                                drop_served=True, recheck=still_allowed)
+                                drop_served=True, recheck=still_allowed, target=cfg.youtube_target)
         except Exception as exc:
-            result["export_error"] = api._export_error(exc)
+            result["export_error"] = api._export_error(exc, target=cfg.youtube_target)
         else:
             result["export"] = report.to_dict()
             result["playlist_url"] = report.playlist_url

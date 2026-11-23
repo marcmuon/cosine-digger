@@ -144,9 +144,10 @@ public final class DigSession {
         self.phase = saved == nil ? .unpaired : .connecting
         self.playback.isPassed = { [weak self] key in self?.verdict(for: key) == .pass }
         self.playback.onHeard = { [weak self] item in self?.markHeard(item) }
+        self.playback.serviceName = { [weak self] in (self?.youtubeTarget ?? .youtube).name }
         self.playback.onRefused = { [weak self] item, message in
-            let link = URL(string: item.videoID.map { "https://music.youtube.com/watch?v=\($0)" }
-                           ?? "https://music.youtube.com/search?q=\(APIClient.segment(item.name))")
+            let target = self?.youtubeTarget ?? .youtube
+            let link = target.externalURL(videoID: item.videoID, query: item.name)
             self?.notice = Notice("\(item.title): \(message)", link: link, isError: true)
         }
     }
@@ -823,9 +824,18 @@ public final class DigSession {
         }
     }
 
-    // MARK: YouTube Music
+    // MARK: YouTube
 
-    /// Why this dig can't be sent to YouTube Music, as the web client tells: a send that failed
+    /// Where playlist and track links open, following the paired server's settings.
+    public var youtubeTarget: YouTubeTarget {
+        if let youtube = settings?.youtube { return youtube.resolvedTarget }
+        if let url = dig?.youtubePlaylistURL.flatMap(URL.init(string:)), url.host == "music.youtube.com" {
+            return .youtubeMusic
+        }
+        return .youtube
+    }
+
+    /// Why this dig can't be sent to YouTube, as the web client tells: a send that failed
     /// for want of a login, else the computer's login as Digger last checked it. Nil when it can.
     public func youtubeLoginProblem(digID: String) -> YouTubeLoginProblem? {
         if case .failed(let message)? = youtubeSends[digID], let problem = YouTubeLoginProblem(message: message) {
@@ -878,27 +888,28 @@ public final class DigSession {
             guard connection == pairing else { youtubeSends[digID] = nil; return }
             switch followed {
             case .finished(let job):
+                let service = youtubeTarget.name
                 if job.state == "done", let result = job.result {
                     youtubeSends[digID] = .sent(result)
-                    notice = Notice("\(name) is in YouTube Music: \(Self.tracks(result.added)).", link: result.playlistURL.flatMap(Self.playlistLink))
+                    notice = Notice("\(name) is in \(service): \(Self.tracks(result.added)).", link: result.playlistURL.flatMap(Self.playlistLink))
                 } else if job.state == "done" {
                     youtubeSends[digID] = nil  // sent, but its report didn't read: the dig has the link
-                    notice = Notice("\(name) is in YouTube Music.")
+                    notice = Notice("\(name) is in \(service).")
                 } else {
-                    failSend(digID, name: name, job.error ?? "YouTube Music didn't take the playlist.")
+                    failSend(digID, name: name, job.error ?? "\(service) didn't take the playlist.")
                 }
                 await refreshAfterSend(digID)
             case .gone:
                 youtubeSends[digID] = nil
                 await refreshAfterSend(digID)
                 if youtubePlaylist(digID: digID) == nil {
-                    notice = Notice("Digger restarted while sending \(name), so it may not be in YouTube Music. Send it again.",
+                    notice = Notice("Digger restarted while sending \(name), so it may not be in \(youtubeTarget.name). Send it again.",
                                     isError: true)
                 }
             case .unpaired:
                 youtubeSends[digID] = nil
             case .tooLong:
-                failSend(digID, name: name, "Digger is still sending this dig. Open YouTube Music to check, or send it again later.")
+                failSend(digID, name: name, "Digger is still sending this dig. Open \(youtubeTarget.name) to check, or send it again later.")
                 await refreshAfterSend(digID)
             }
         } catch {
@@ -938,11 +949,12 @@ public final class DigSession {
     }
 
     private func failSend(_ digID: String, name: String, _ message: String) {
+        let service = youtubeTarget.name
         youtubeSends[digID] = .failed(message)
         switch YouTubeLoginProblem(message: message) {
-        case .rejected?: notice = Notice("YouTube Music signed Digger out. Log in again to send \(name).", isError: true)
-        case .missing?: notice = Notice("Connect YouTube Music to send \(name).", isError: true)
-        case nil: notice = Notice("Couldn't send \(name) to YouTube Music: \(message)", isError: true)
+        case .rejected?: notice = Notice("\(service) signed Digger out. Log in again to send \(name).", isError: true)
+        case .missing?: notice = Notice("Connect \(service) to send \(name).", isError: true)
+        case nil: notice = Notice("Couldn't send \(name) to \(service): \(message)", isError: true)
         }
     }
 
@@ -999,7 +1011,7 @@ public final class DigSession {
             guard connection == pairing else { return }
             reached()
             if let fresh = result.settings { settings = fresh } else if let fresh = try? await api.settings() { settings = fresh }
-            youtubeLoginReport = Self.loginReport(result.state)
+            youtubeLoginReport = Self.loginReport(result.state, target: youtubeTarget)
             if result.loggedIn {
                 // Just logged in: a send that failed for want of a login can go again; it says if it can't.
                 youtubeSends = youtubeSends.filter { _, send in
@@ -1020,18 +1032,20 @@ public final class DigSession {
         }
     }
 
-    static func loginReport(_ state: String) -> YouTubeLoginReport {
+    static func loginReport(_ state: String, target: YouTubeTarget = .youtube) -> YouTubeLoginReport {
+        let service = target.name
+        let signIn = target == .youtubeMusic ? "music.youtube.com" : "youtube.com or music.youtube.com"
         switch state {
         case "connected":
-            return YouTubeLoginReport(message: "Logged in from Chrome. Digger can send digs to YouTube Music.", isError: false)
+            return YouTubeLoginReport(message: "Logged in from Chrome. Digger can send digs to \(service).", isError: false)
         case "rejected":
-            return YouTubeLoginReport(message: "YouTube Music didn't accept Chrome's login. Sign in at music.youtube.com "
+            return YouTubeLoginReport(message: "\(service) didn't accept Chrome's login. Sign in at \(signIn) "
                                       + "in Chrome on your computer, then try again.", isError: true)
         case "missing":
-            return YouTubeLoginReport(message: "Chrome isn't signed in to YouTube Music. Sign in at music.youtube.com "
+            return YouTubeLoginReport(message: "Chrome isn't signed in to \(service). Sign in at \(signIn) "
                                       + "in Chrome on your computer, then try again.", isError: true)
         case "unreachable":
-            return YouTubeLoginReport(message: "Saved Chrome's login, but YouTube Music didn't answer to check it. "
+            return YouTubeLoginReport(message: "Saved Chrome's login, but \(service) didn't answer to check it. "
                                       + "If a send fails, log in again.", isError: false)
         default:
             return YouTubeLoginReport(message: "Saved Chrome's login. Digger checks it when it next sends.", isError: false)

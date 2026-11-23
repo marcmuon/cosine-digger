@@ -118,6 +118,7 @@ def test_doctor_offline_json_and_sources(monkeypatch, isolated_home):
     assert payload["checks"]["cosine_token"]["source"] == "settings"
     assert "user_version=7" in payload["checks"]["db"]["detail"]
     assert payload["config"]["db_path"] == str(home / "taste.db")
+    assert payload["config"]["youtube_target"] == "youtube"
     assert not SECRET_FIELDS.intersection(payload["config"])
     for secret in [*secrets.values(), "private-cookie"]:
         assert secret not in result.output
@@ -173,3 +174,31 @@ def test_doctor_online_request(monkeypatch, isolated_home, response_status):
     assert kwargs["timeout"] == 5.0
     assert kwargs["headers"]["Authorization"] == "Bearer private-token"
     assert "private-token" not in result.output
+
+
+def test_youtube_target_config_defaults_aliases_and_validation(monkeypatch, isolated_home):
+    home = isolated_home / ".cosine-digger"
+    assert load_config().youtube_target == "youtube"
+    assert load_config().sources["youtube_target"] == "default"
+
+    save_settings({"youtube_target": "youtube_music"}, home)
+    cfg = load_config()
+    assert cfg.youtube_target == "youtube_music"
+    assert cfg.sources["youtube_target"] == "settings"
+
+    monkeypatch.setenv("COSINE_DIGGER_YOUTUBE_TARGET", "youtube")
+    cfg = load_config()
+    assert cfg.youtube_target == "youtube"
+    assert cfg.sources["youtube_target"] == "env"
+
+    for alias in ("music", "ytmusic", "YouTube-Music", " YOUTUBE_MUSIC "):
+        monkeypatch.setenv("COSINE_DIGGER_YOUTUBE_TARGET", alias)
+        assert load_config().youtube_target == "youtube_music"
+
+    for blank in ("", "   "):
+        monkeypatch.setenv("COSINE_DIGGER_YOUTUBE_TARGET", blank)
+        assert load_config().youtube_target == "youtube"
+
+    monkeypatch.setenv("COSINE_DIGGER_YOUTUBE_TARGET", "spotify")
+    with pytest.raises(ValueError, match="youtube_target"):
+        load_config()

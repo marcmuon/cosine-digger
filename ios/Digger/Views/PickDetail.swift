@@ -93,9 +93,10 @@ struct PickDetail: View {
                         }
                     }
 
-                    if let url = Explain.youTubeMusicURL(pick) {
+                    if let url = Explain.youTubeURL(pick, target: session.youtubeTarget) {
+                        let service = session.youtubeTarget.name
                         InspectorSection(title: "Listen elsewhere") {
-                            PanelLink(title: pick.videoID == nil ? "Search YouTube Music" : "Open in YouTube Music",
+                            PanelLink(title: pick.videoID == nil ? "Search \(service)" : "Open in \(service)",
                                       destination: url)
                         }
                     }

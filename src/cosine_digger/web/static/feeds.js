@@ -1,5 +1,5 @@
 import {selectors} from './state.js';
-import {formatWhen} from './dom.js';
+import {formatWhen, youtubeTarget} from './dom.js';
 
 const kinds = [
   {kind: 'daily', title: 'Digger Daily', sizeKey: 'daily_size'},
@@ -34,12 +34,12 @@ function exportCounts(report) {
     .filter(([key]) => Array.isArray(report[key]) && report[key].length)
     .map(([key, label]) => `${report[key].length} ${label}`);
 }
-function outcome(result, dryRun) {
+function outcome(result, dryRun, yt) {
   const report = result.export && typeof result.export === 'object' ? result.export : null;
   if (dryRun) return {tone: 'warn', label: 'Dry run'};
   if (result.export_error) return {tone: 'fail', label: 'Export failed', error: result.export_error};
   if (!result.tracks?.length && !report) return {tone: 'warn', label: 'Nothing written',
-    empty: 'No tracks came back, so nothing was written to YouTube Music.'};
+    empty: `No tracks came back, so nothing was written to ${yt.name}.`};
   if (!report) return {tone: 'fail', label: 'Not written',
     warning: 'The run returned no export report; writing the playlist could not be confirmed.'};
   if (report.verified === false) return {tone: 'warn', label: 'Not verified',
@@ -91,13 +91,13 @@ export function mountFeeds(root, {store, h, text, safeUrl, clock, mounts}) {
   const retryWrap = h('div', {class: 'feeds-retry', hidden: true}, retry);
   error.after(retryWrap);
 
-  function loginText(message, card) {
+  function loginText(message, card, yt = youtubeTarget(store.getState().ui.settings)) {
     const problem = loginProblem(message);
     if (card) card.loginProblem = problem;
-    return problem ? text(problem === 'rejected' ? 'S-SET-YT-REJECTED' : 'S-FEEDS-LOGIN-MISSING') : message;
+    return problem ? text(problem === 'rejected' ? 'S-SET-YT-REJECTED' : 'S-FEEDS-LOGIN-MISSING', {service: yt.name}) : message;
   }
   function connectYouTube(card) {
-    // Opens Setup's YouTube Music card with its headers field ready.
+    // Opens Setup's YouTube card with its headers field ready.
     store.actions.openRoute({page: 'setup'}).then(() => {
       if (mounts.ytForm.hidden) mounts.ytConnect.click();
       else mounts.ytHeaders.focus();
@@ -107,12 +107,12 @@ export function mountFeeds(root, {store, h, text, safeUrl, clock, mounts}) {
     const href = safeUrl(url);
     return href ? h('a', {class: 'btn btn--yt', href, target: '_blank', rel: 'noopener', ...attrs}, label) : null;
   }
-  function trackRow(track, index) {
+  function trackRow(track, index, yt) {
     const actions = h('div', {class: 'pick__actions'});
     if (track.source) actions.append(h('span', {class: 'src-tag src-tag--' + track.source}, track.source));
-    actions.append(externalLink(track.youtube_url, '▶ YT Music', {class: 'btn btn--small btn--yt',
-      'aria-label': `Open ${track.artist} - ${track.title} in YouTube Music`}) ||
-      h('span', {class: 'pick__noyt', title: 'No YouTube Music match for this track'}, 'No YT match'));
+    actions.append(externalLink(track.youtube_url, `▶ ${yt.short}`, {class: 'btn btn--small btn--yt',
+      'aria-label': `Open ${track.artist} - ${track.title} in ${yt.name}`}) ||
+      h('span', {class: 'pick__noyt', title: `No ${yt.name} match for this track`}, 'No YT match'));
     return h('li', {class: 'pick', 'data-track-id': track.id},
       h('span', {class: 'pick__n', 'aria-hidden': 'true'}, String(index + 1).padStart(2, '0')),
       h('div', {class: 'pick__main'},
@@ -121,8 +121,8 @@ export function mountFeeds(root, {store, h, text, safeUrl, clock, mounts}) {
         (track.hop > 0 || track.label) && h('p', {class: 'pick__meta'},
           [track.hop > 0 && `HOP ${track.hop}`, track.label && `LABEL ${track.label}`].filter(Boolean).join(' · '))), actions);
   }
-  function renderResult(card, result) {
-    const dryRun = card.el.dataset.dryRun === 'true', status = outcome(result, dryRun);
+  function renderResult(card, result, yt = youtubeTarget(store.getState().ui.settings)) {
+    const dryRun = card.el.dataset.dryRun === 'true', status = outcome(result, dryRun, yt);
     const tracks = Array.isArray(result.tracks) ? result.tracks : [], report = result.export;
     const counts = !dryRun && report ? exportCounts(report) : [];
     if (!dryRun && Array.isArray(report?.added)) counts.unshift(
@@ -132,10 +132,10 @@ export function mountFeeds(root, {store, h, text, safeUrl, clock, mounts}) {
         h('span', {}, `${tracks.length} track${tracks.length === 1 ? '' : 's'}${result.date ? ' · ' + result.date : ''}`),
         counts.length ? h('span', {}, counts.join(' · ')) : null,
         !dryRun && externalLink(result.playlist_url || report?.playlist_url, '▶ Open', {class: 'btn btn--small btn--yt'})),
-      status.error && h('div', {class: 'alert', role: 'alert'}, loginText(status.error, card)),
+      status.error && h('div', {class: 'alert', role: 'alert'}, loginText(status.error, card, yt)),
       status.warning && h('div', {class: 'alert alert--warn', role: 'status'}, status.warning),
       ...(result.warnings || []).map((warning) => h('div', {class: 'alert alert--warn'}, warning)),
-      tracks.length ? h('ol', {class: 'picks plcard__tracks', 'aria-label': `${card.spec.title} tracks`}, tracks.map(trackRow)) :
+      tracks.length ? h('ol', {class: 'picks plcard__tracks', 'aria-label': `${card.spec.title} tracks`}, tracks.map((track, index) => trackRow(track, index, yt))) :
         h('p', {class: 'empty-note'}, status.empty || 'No tracks came back.')].filter(Boolean));
     card.result.hidden = false;
     return status;
@@ -146,7 +146,7 @@ export function mountFeeds(root, {store, h, text, safeUrl, clock, mounts}) {
     card.log.scrollTop = card.log.scrollHeight;
   }
   async function run(card, dryRun) {
-    const s = store.getState(), feed = selectors.feedState(s, card.spec.kind);
+    const s = store.getState(), feed = selectors.feedState(s, card.spec.kind), yt = youtubeTarget(s.ui.settings);
     if (s.ui.server !== 'up' || card.el.dataset.submitting === 'true' ||
         feed?.state === 'running' || feed?.last_run?.status === 'running') return;
     card.el.dataset.submitting = 'true';
@@ -156,12 +156,12 @@ export function mountFeeds(root, {store, h, text, safeUrl, clock, mounts}) {
     card.result.hidden = true;
     card.loginProblem = null;
     alert(card.error, '');
-    logLine(card, dryRun ? 'Dry run: planning without writing to YouTube Music' : 'Run: planning and writing the playlist');
+    logLine(card, dryRun ? `Dry run: planning without writing to ${yt.name}` : 'Run: planning and writing the playlist');
     render(s);
     try {
       await store.actions.runFeed(card.spec.kind, {dryRun});
     } catch (err) {
-      if (!destroyed) { const shown = loginText(err.message, card); alert(card.error, shown); logLine(card, shown, true); }
+      if (!destroyed) { const shown = loginText(err.message, card, yt); alert(card.error, shown); logLine(card, shown, true); }
     } finally {
       if (!destroyed) { delete card.el.dataset.submitting; render(store.getState()); }
     }
@@ -178,7 +178,7 @@ export function mountFeeds(root, {store, h, text, safeUrl, clock, mounts}) {
     card.run = h('button', {class: 'btn btn--go', type: 'button', 'data-action': 'run-feed', 'data-slot': 'run',
       onclick: () => run(card, false)}, 'Run now');
     card.connect = h('button', {class: 'btn btn--go', type: 'button', 'data-action': 'connect-youtube', 'data-slot': 'connect',
-      hidden: true, onclick: () => connectYouTube(card)}, text('S-FEEDS-CONNECT-YT'));
+      hidden: true, onclick: () => connectYouTube(card)}, text('S-FEEDS-CONNECT-YT', {service: youtubeTarget(store.getState().ui.settings).name}));
     card.dry = h('button', {class: 'btn', type: 'button', 'data-action': 'dry-run-feed', 'data-slot': 'dry',
       onclick: () => run(card, true)}, 'Dry run');
     card.log = h('ol', {class: 'log log--compact', 'data-slot': 'log', 'aria-label': `${spec.title} progress`, hidden: true});
@@ -207,7 +207,8 @@ export function mountFeeds(root, {store, h, text, safeUrl, clock, mounts}) {
     const scheduled = feeds.some((feed) => feed?.scheduled === true);
     const latest = feeds.map((feed) => feed?.last_run?.finished_at).filter(dateOf)
       .sort((a, b) => dateOf(b) - dateOf(a))[0];
-    lede.textContent = text(scheduled ? 'S-FEEDS-LEDE' : 'S-FEEDS-LEDE-START');
+    const yt = youtubeTarget(s.ui.settings);
+    lede.textContent = text(scheduled ? 'S-FEEDS-LEDE' : 'S-FEEDS-LEDE-START', {service: yt.name});
     how.hidden = scheduled;
     lastRun.hidden = scheduled || !feeds.every(Boolean);
     lastRun.textContent = text('S-FEEDS-LAST', {when: latest ? lastWhen(latest) : text('S-FEEDS-LAST-NONE')});
@@ -217,7 +218,7 @@ export function mountFeeds(root, {store, h, text, safeUrl, clock, mounts}) {
     nextDaily.textContent = scheduled ? text('S-FEEDS-NEXT-DAILY', {'DDD HH:MM': nextWhen(feeds[0]?.next_run)}) : '';
     nextWeekly.textContent = scheduled ? text('S-FEEDS-NEXT-WEEKLY', {'DDD HH:MM': nextWhen(feeds[1]?.next_run)}) : '';
     retryWrap.hidden = error.hidden;
-    // Until a YouTube Music login is saved (or after one is refused), Connect replaces Run now.
+    // Until a YouTube login is saved (or after one is refused), Connect replaces Run now.
     const youtube = s.ui.settings?.youtube;
     const needsLogin = !!youtube && (!youtube.saved || youtube.checked === 'rejected');
     for (const card of cards) {
@@ -234,12 +235,12 @@ export function mountFeeds(root, {store, h, text, safeUrl, clock, mounts}) {
         ['', feed ? 'Never run' : error.hidden ? 'Loading…' : 'Unavailable'];
       card.badge.className = 'badge' + (tone ? ' badge--' + tone : ''); card.badge.textContent = label;
       card.time.textContent = last ? lastWhen(last.finished_at) : feed ? 'never' : '—';
-      card.detail.textContent = last?.detail ? loginText(last.detail) :
+      card.detail.textContent = last?.detail ? loginText(last.detail, null, yt) :
         feed && !last ? scheduled ? 'No run yet. Run now, or wait for the schedule.' : text('S-FEEDS-NO-RUN') : '';
-      const url = safeUrl(feed?.playlist_url);
-      if (url !== card.linkUrl) {
-        card.linkUrl = url;
-        card.link.replaceChildren(externalLink(url, '▶ Open in YT Music') || h('span', {class: 'plcard__time'}, 'No playlist yet'));
+      const url = safeUrl(feed?.playlist_url), linkKey = `${url || ''}|${yt.short}`;
+      if (linkKey !== card.linkUrl) {
+        card.linkUrl = linkKey;
+        card.link.replaceChildren(externalLink(url, `▶ Open in ${yt.short}`) || h('span', {class: 'plcard__time'}, 'No playlist yet'));
       }
       const pending = card.el.dataset.submitting === 'true' || feed?.state === 'running' || last?.status === 'running';
       const disabled = pending || s.ui.server !== 'up';
@@ -249,6 +250,7 @@ export function mountFeeds(root, {store, h, text, safeUrl, clock, mounts}) {
       }
       const refused = card.loginProblem || (last?.status === 'error' ? loginProblem(last.detail) : null);
       card.run.hidden = needsLogin;
+      card.connect.textContent = text('S-FEEDS-CONNECT-YT', {service: yt.name});
       card.connect.hidden = !needsLogin && !refused;
       card.connect.className = 'btn' + (needsLogin ? ' btn--go' : '');
       card.el.setAttribute('aria-busy', String(!!pending));
@@ -261,9 +263,9 @@ export function mountFeeds(root, {store, h, text, safeUrl, clock, mounts}) {
       if (message && message !== card.progress) { card.progress = message; logLine(card, message); }
       if (['done', 'error'].includes(feed.state) && card.terminal !== feed.job_id) {
         card.terminal = feed.job_id;
-        if (feed.state === 'error') { const shown = loginText(feed.error, card); alert(card.error, shown); logLine(card, shown, true); }
+        if (feed.state === 'error') { const shown = loginText(feed.error, card, yt); alert(card.error, shown); logLine(card, shown, true); }
         else {
-          const status = renderResult(card, feed.result || {});
+          const status = renderResult(card, feed.result || {}, yt);
           logLine(card, `${card.spec.title}: ${status.label}, ${feed.result?.tracks?.length || 0} tracks`);
         }
         // The run ledger is separate from the legacy job's result, including failures.
