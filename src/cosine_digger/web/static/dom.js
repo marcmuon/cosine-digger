@@ -484,12 +484,14 @@ export function youtubeTarget(settings) {
     id: 'youtube_music',
     name: 'YouTube Music',
     short: 'YT Music',
+    site: 'music.youtube.com',
     watchUrl: (videoId) => `https://music.youtube.com/watch?v=${encodeURIComponent(videoId)}`,
     searchUrl: (query) => `https://music.youtube.com/search?q=${encodeURIComponent(query)}`,
   } : {
     id: 'youtube',
     name: 'YouTube',
     short: 'YouTube',
+    site: 'youtube.com',
     watchUrl: (videoId) => `https://www.youtube.com/watch?v=${encodeURIComponent(videoId)}`,
     searchUrl: (query) => `https://www.youtube.com/results?search_query=${encodeURIComponent(query)}`,
   };

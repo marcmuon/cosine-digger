@@ -379,6 +379,43 @@ def test_login_accepts_every_way_a_browser_copies_headers(tmp_path, pasted):
     assert (tmp_path / "auth.json").stat().st_mode & 0o777 == 0o600
 
 
+def test_login_normalizes_normal_youtube_com_headers(tmp_path):
+    from ytmusicapi import YTMusic
+    from ytmusicapi.auth.types import AuthType
+
+    yt_curl = """curl 'https://www.youtube.com/youtubei/v1/browse?prettyPrint=false' \\
+      -H 'accept: */*' \\
+      -H 'authorization: SAPISIDHASH 1_webhash' \\
+      -H 'origin: https://www.youtube.com' \\
+      -H 'x-origin: https://www.youtube.com' \\
+      -H 'referer: https://www.youtube.com/feed/playlists' \\
+      -H 'x-youtube-client-name: 1' \\
+      -H 'x-youtube-client-version: 2.20261122.01.00' \\
+      -H 'x-youtube-bootstrap-logged-in: true' \\
+      -H 'x-goog-visitor-id: CgtWebVisitor' \\
+      -H 'x-goog-authuser: 1' \\
+      -H 'x-goog-pageid: 10987654321' \\
+      -b 'SID=fake-sid; __Secure-3PAPISID=fake-papisid'"""
+    path = youtube.login(yt_curl, tmp_path / "auth.json")
+    saved = {k.lower(): v for k, v in json.loads(path.read_text()).items()}
+    assert saved["origin"] == "https://music.youtube.com"
+    assert saved["x-goog-authuser"] == "1"
+    assert saved["x-goog-pageid"] == "10987654321"
+    for dropped in ("x-origin", "referer", "x-youtube-client-name", "x-youtube-client-version",
+                    "x-youtube-bootstrap-logged-in", "x-goog-visitor-id"):
+        assert dropped not in saved
+    assert YTMusic(str(path)).auth_type == AuthType.BROWSER
+
+    # Even a minimal youtube.com header copy (cookie only, no x-goog-authuser or authorization)
+    # gets defaults so ytmusicapi accepts it as a browser login.
+    minimal = "cookie: SID=fake-sid; __Secure-3PAPISID=fake-papisid\norigin: https://www.youtube.com\n"
+    min_path = youtube.login(minimal, tmp_path / "minimal.json")
+    min_saved = {k.lower(): v for k, v in json.loads(min_path.read_text()).items()}
+    assert min_saved["x-goog-authuser"] == "0"
+    assert min_saved["authorization"].startswith("SAPISIDHASH ")
+    assert YTMusic(str(min_path)).auth_type == AuthType.BROWSER
+
+
 def test_verification_waits_for_youtube_and_accepts_its_substitutions(provider):
     """Seen live: the first re-read after writing can be empty, YouTube may
     store a song under its official-audio id, and it declines some videos."""

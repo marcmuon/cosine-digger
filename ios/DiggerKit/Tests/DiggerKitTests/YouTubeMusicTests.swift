@@ -267,7 +267,7 @@ extension SessionRecoveryTests {
 
         XCTAssertTrue(DigSession.loginReport("connected", target: .youtube).message.contains("send digs to YouTube."))
         XCTAssertTrue(DigSession.loginReport("connected", target: .youtubeMusic).message.contains("send digs to YouTube Music."))
-        XCTAssertTrue(DigSession.loginReport("rejected", target: .youtube).message.contains("youtube.com or music.youtube.com"))
+        XCTAssertTrue(DigSession.loginReport("rejected", target: .youtube).message.contains("Sign in at youtube.com"))
         XCTAssertTrue(DigSession.loginReport("rejected", target: .youtubeMusic).message.contains("Sign in at music.youtube.com"))
         XCTAssertTrue(DigSession.loginReport("missing", target: .youtube).message.contains("Chrome isn't signed in to YouTube."))
         XCTAssertTrue(DigSession.loginReport("missing", target: .youtubeMusic).message.contains("Chrome isn't signed in to YouTube Music."))

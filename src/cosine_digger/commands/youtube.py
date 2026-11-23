@@ -56,6 +56,7 @@ def login_command(
     """Read browser request headers from stdin until EOF, from --file, or from Chrome."""
     cfg = load_config()
     service = youtube.service_name(cfg.youtube_target)
+    site = "music.youtube.com" if cfg.youtube_target == "youtube_music" else "youtube.com"
     if from_chrome:
         from .. import chrome_login
 
@@ -72,7 +73,7 @@ def login_command(
         if not from_chrome and file is not None:
             headers = file.read_text()
         elif not from_chrome:
-            typer.echo("Paste request headers from music.youtube.com, then send EOF (Ctrl-D).", err=True)
+            typer.echo(f"Paste request headers from {site}, then send EOF (Ctrl-D).", err=True)
             with _hidden_stdin():
                 headers = sys.stdin.read()
         youtube.login(headers, cfg.ytmusic_auth_path)
@@ -84,7 +85,7 @@ def login_command(
     elif _live_check():
         typer.echo("ok: login saved and verified.")
     else:
-        fresh = ("Open music.youtube.com in Chrome, check you're signed in, then run this again." if from_chrome
+        fresh = (f"Open {site} in Chrome, check you're signed in, then run this again." if from_chrome
                  else "Copy fresh browser headers.")
         typer.echo(f"fail: login saved, but live verification failed. {fresh}", err=True)
         raise typer.Exit(1)

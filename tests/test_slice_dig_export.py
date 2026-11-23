@@ -81,6 +81,8 @@ def test_dig_header_sends_the_dig_and_keeps_its_playlist_link(tmp_path, monkeypa
         page.wait_for_function("location.hash === '#setup'")
         expect(page.locator("#card-youtube")).to_be_in_viewport()
         expect(page.locator("#card-youtube-title")).to_have_text("YouTube")
+        expect(page.locator("#yt-howto-host")).to_have_text("youtube.com")
+        expect(page.locator("#yt-howto-post-host")).to_have_text("youtube.com")
         browser.close()
 
 
@@ -151,6 +153,8 @@ def test_youtube_music_target_switches_links_and_ui(tmp_path, monkeypatch):
         page.goto(f"{app.url}/#setup")
         expect(page.locator("#card-youtube-title")).to_have_text("YouTube Music")
         expect(page.locator("#yt-desc")).to_contain_text("YouTube Music")
+        expect(page.locator("#yt-howto-host")).to_have_text("music.youtube.com")
+        expect(page.locator("#yt-howto-post-host")).to_have_text("music.youtube.com")
         expect(page.locator('#health-list [data-check="youtube_login"] .check__name')).to_have_text("YouTube Music login")
 
         page.goto(f"{app.url}/#feeds")

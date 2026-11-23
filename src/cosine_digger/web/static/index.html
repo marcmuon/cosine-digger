@@ -155,10 +155,10 @@
                   </div>
                   <form class="card__form" id="yt-form" autocomplete="off" hidden>
                     <ol class="howto">
-                      <li>Open <strong>music.youtube.com</strong> in your browser while signed in (Digger uses its session to write playlists to your YouTube account).</li>
+                      <li>Open <strong id="yt-howto-host">youtube.com</strong> in your browser while signed in.</li>
                       <li>Open developer tools (<kbd>⌥⌘I</kbd> / <kbd>F12</kbd>) and go to <strong>Network</strong>.</li>
                       <li>Type <strong>browse</strong> in the filter, then click around the site until a request shows up.</li>
-                      <li>Click a <strong>POST</strong> request to music.youtube.com and find its <strong>Request Headers</strong>.</li>
+                      <li>Click a <strong>POST</strong> request to <span id="yt-howto-post-host">youtube.com</span> and find its <strong>Request Headers</strong>.</li>
                       <li>Copy them: right-click the request → Copy → <strong>Copy as cURL</strong> (Chrome, Brave, Edge), or Copy Value → Copy Request Headers (Firefox). Selecting the Request Headers section by hand works too.</li>
                       <li>Paste below and log in. The headers go straight to the server and are never shown again.</li>
                     </ol>

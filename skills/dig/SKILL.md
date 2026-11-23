@@ -20,6 +20,6 @@ Reply with:
 1. The playlist link first, and whether `export.verified` is true.
 2. The picks as a numbered list: `Artist - Title: why`.
 3. Any seed with `ok: false`, its note, and the spelling or URL that would fix it.
-4. On `export_error` about the login: tell the user to run `cosine-digger youtube login` once and paste their browser request headers from music.youtube.com (or `--from-chrome` on macOS). The picks still stand, so list them anyway.
+4. On `export_error` about the login: tell the user to run `cosine-digger youtube login` once and paste their browser request headers from youtube.com (or `--from-chrome` on macOS). The picks still stand, so list them anyway.
 
 The dig is done when the user has the playlist URL (or the exact export error) and every pick's why.

@@ -162,6 +162,17 @@ def auth_path() -> Path:
 
 
 _HEADER_NAME = re.compile(r"^:?[A-Za-z][A-Za-z0-9-]*:?$")
+# Site-specific headers from www.youtube.com (or music.youtube.com) that conflict
+# with ytmusicapi's WEB_REMIX requests to music.youtube.com.
+_DROP_LOGIN_HEADERS = frozenset({
+    "origin",
+    "x-origin",
+    "referer",
+    "x-youtube-client-name",
+    "x-youtube-client-version",
+    "x-youtube-bootstrap-logged-in",
+    "x-goog-visitor-id",
+})
 
 
 def normalize_headers(text: str) -> str:
@@ -174,11 +185,23 @@ def normalize_headers(text: str) -> str:
 
         tokens = shlex.split(text.replace("\\\r\n", " ").replace("\\\n", " "))
         lines = []
-        for flag, value in zip(tokens, tokens[1:] + [""]):
-            if flag in ("-H", "--header"):
-                lines.append(value)
-            elif flag in ("-b", "--cookie"):
-                lines.append(f"cookie: {value}")
+        i = 0
+        while i < len(tokens):
+            tok = tokens[i]
+            if tok in ("-H", "--header") and i + 1 < len(tokens):
+                lines.append(tokens[i + 1])
+                i += 2
+            elif tok.startswith("--header="):
+                lines.append(tok.split("=", 1)[1])
+                i += 1
+            elif tok in ("-b", "--cookie") and i + 1 < len(tokens):
+                lines.append(f"cookie: {tokens[i + 1]}")
+                i += 2
+            elif tok.startswith("--cookie="):
+                lines.append(f"cookie: {tok.split('=', 1)[1]}")
+                i += 1
+            else:
+                i += 1
         return "\n".join(lines)
     rows = [line.strip() for line in text.splitlines() if line.strip()]
     if sum(": " in row for row in rows) * 2 >= len(rows):
@@ -198,9 +221,41 @@ def normalize_headers(text: str) -> str:
     return "\n".join(lines)
 
 
+def _prepare_login_headers(headers_raw: str) -> str:
+    """Adapt pasted youtube.com or music.youtube.com headers for ytmusicapi.
+
+    www.youtube.com and music.youtube.com share the same .youtube.com session
+    cookies and account headers (x-goog-authuser, x-goog-pageid). Stripping
+    www.youtube.com client/origin headers and supplying defaults when absent lets
+    users copy headers straight from youtube.com without opening YouTube Music.
+    """
+    parsed: dict[str, str] = {}
+    for line in headers_raw.splitlines():
+        line = line.strip()
+        if not line or line.startswith(":") or ":" not in line:
+            continue
+        name, value = line.split(":", 1)
+        key = name.strip().lower()
+        if not key or key in _DROP_LOGIN_HEADERS:
+            continue
+        parsed[key] = value.strip()
+    cookie = parsed.get("cookie")
+    if cookie:
+        from ytmusicapi.helpers import get_authorization, sapisid_from_cookie
+
+        try:
+            sapisid = sapisid_from_cookie(cookie)
+        except Exception:
+            sapisid = None
+        if sapisid:
+            parsed.setdefault("x-goog-authuser", "0")
+            parsed.setdefault("authorization", get_authorization(f"{sapisid} https://music.youtube.com"))
+    return "\n".join(f"{k}: {v}" for k, v in parsed.items())
+
+
 def login(headers_raw: str, path: str | Path) -> Path:
     """Save browser headers privately, without emitting credentials or library errors."""
-    headers_raw = normalize_headers(headers_raw)
+    headers_raw = _prepare_login_headers(normalize_headers(headers_raw))
     if not headers_raw.strip():
         raise ValueError("No browser headers supplied.")
     path = Path(path).expanduser()

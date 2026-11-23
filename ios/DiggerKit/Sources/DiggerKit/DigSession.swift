@@ -1034,7 +1034,7 @@ public final class DigSession {
 
     static func loginReport(_ state: String, target: YouTubeTarget = .youtube) -> YouTubeLoginReport {
         let service = target.name
-        let signIn = target == .youtubeMusic ? "music.youtube.com" : "youtube.com or music.youtube.com"
+        let signIn = target == .youtubeMusic ? "music.youtube.com" : "youtube.com"
         switch state {
         case "connected":
             return YouTubeLoginReport(message: "Logged in from Chrome. Digger can send digs to \(service).", isError: false)

@@ -372,6 +372,10 @@ export function mountSetup(root, {store, h, text}) {
     if (desc) desc.textContent = text('S-SET-YT-DESC', {service: yt.name});
     const hint = find('yt-chrome-hint');
     if (hint) hint.textContent = text('S-SET-YT-CHROME-HINT', {service: yt.name});
+    const howtoHost = find('yt-howto-host');
+    if (howtoHost) howtoHost.textContent = yt.site;
+    const howtoPostHost = find('yt-howto-post-host');
+    if (howtoPostHost) howtoPostHost.textContent = yt.site;
     // "missing": the pasted headers saved no login (an empty {} isn't one).
     const refused = setup.login?.state === 'missing' && !youtube?.saved;
     const [tone, message] = busy.has('chrome') ? ['muted', text('S-SET-YT-CHROME-WAIT')] :

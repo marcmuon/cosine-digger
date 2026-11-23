@@ -83,6 +83,27 @@ def test_a_named_profile_is_used_and_a_missing_one_is_named(tmp_path):
         headers(base, profile="Profile 9")
 
 
+def test_partitioned_third_party_cookies_are_ignored(tmp_path):
+    folder = tmp_path / "Chrome" / "Default"
+    folder.mkdir(parents=True)
+    with sqlite3.connect(folder / "Cookies") as conn:
+        conn.execute("CREATE TABLE meta (key TEXT PRIMARY KEY, value TEXT)")
+        conn.execute("INSERT INTO meta VALUES ('version', '24')")
+        conn.execute("CREATE TABLE cookies (host_key TEXT, top_frame_site_key TEXT, name TEXT, value TEXT, "
+                     "encrypted_value BLOB, has_expires INTEGER, expires_utc INTEGER)")
+        conn.executemany("INSERT INTO cookies VALUES (?, ?, ?, '', ?, 1, ?)", [
+            (".youtube.com", "", "__Secure-3PAPISID", encrypted(".youtube.com", "real-papisid"), FUTURE),
+            (".youtube.com", "", "VISITOR_INFO1_LIVE", encrypted(".youtube.com", "first-party"), FUTURE),
+            (".youtube.com", "https://embed.example", "VISITOR_INFO1_LIVE",
+             encrypted(".youtube.com", "third-party-embed"), FUTURE),
+            (".youtube.com", "https://embed.example", "__Secure-YNID",
+             encrypted(".youtube.com", "embed-only"), FUTURE),
+        ])
+    lines = headers(tmp_path / "Chrome").splitlines()
+    cookie = dict(part.split("=", 1) for part in lines[0].removeprefix("cookie: ").split("; "))
+    assert cookie == {"__Secure-3PAPISID": "real-papisid", "VISITOR_INFO1_LIVE": "first-party"}
+
+
 def test_a_cookie_file_locked_too_long_gives_up_in_plain_words(tmp_path, monkeypatch):
     base = chrome(tmp_path, [(".youtube.com", "__Secure-3PAPISID", "held", FUTURE)])
     monkeypatch.setattr(chrome_login, "SNAPSHOT_TIMEOUT_S", 0.5)

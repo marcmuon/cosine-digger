@@ -130,9 +130,12 @@ def read_cookies(cookie_file: Path, key: bytes, *, now: datetime | None = None) 
             source.backup(conn, progress=progress, sleep=0.1)
             row = conn.execute("SELECT value FROM meta WHERE key = 'version'").fetchone()
             version = int(row[0]) if row else 0
+            columns = {r[1] for r in conn.execute("PRAGMA table_info(cookies)").fetchall()}
+            unpartitioned = (" AND (top_frame_site_key IS NULL OR top_frame_site_key = '')"
+                             if "top_frame_site_key" in columns else "")
             rows = conn.execute(
                 f"SELECT host_key, name, value, encrypted_value, has_expires, expires_utc FROM cookies "
-                f"WHERE host_key IN ({','.join('?' * len(HOSTS))})", HOSTS).fetchall()
+                f"WHERE host_key IN ({','.join('?' * len(HOSTS))}){unpartitioned}", HOSTS).fetchall()
     except sqlite3.OperationalError as exc:
         if "locked" in str(exc) or "busy" in str(exc):
             raise ChromeLoginError("Chrome was busy saving cookies. Try again in a moment.") from None
@@ -170,5 +173,5 @@ def youtube_headers(profile: str | None = None, *, base: Path | None = None, aut
             return "\n".join([f"cookie: {cookie}", f"x-goog-authuser: {authuser}", f"origin: {ORIGIN}",
                               f"authorization: {get_authorization(cookies[SIGNED_IN] + ' ' + ORIGIN)}",
                               f"user-agent: {USER_AGENT}"])
-    raise ChromeLoginError("Chrome isn't signed in to YouTube. Sign in at youtube.com or music.youtube.com "
+    raise ChromeLoginError("Chrome isn't signed in to YouTube. Sign in at youtube.com "
                            "in Chrome, then try again.")
